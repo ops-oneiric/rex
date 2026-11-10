@@ -130,3 +130,62 @@ export const associatePto = sqliteTable(
   },
   (t) => [index("associate_pto_associate_dates_idx").on(t.associateId, t.startDate)],
 );
+
+/* ----------------------------------- Phase 2: Clients ------------------------------------ */
+
+export const clients = sqliteTable(
+  "clients",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** Exactly 3 uppercase letters or digits. Optional for prospects. Coded before sending to Claude. */
+    companyCode: text("company_code"),
+    /** Optional label. Never sent to Claude. */
+    displayName: text("display_name"),
+    lifecycleStage: text("lifecycle_stage", { enum: ["PROSPECT", "IMPLEMENTATION", "SERVICE"] }).notNull(),
+    implementationType: text("implementation_type", { enum: ["NEW_LOGO", "ADD_CONTROL"] }),
+    supportModel: text("support_model", { enum: ["HYBRID", "TRADITIONAL", "PM"] }),
+    employeeCount: integer("employee_count"),
+    /** Go-live / first payroll, YYYY-MM-DD. The main date for assignment. */
+    firstInputDate: text("first_input_date"),
+    benefitsStartDate: text("benefits_start_date"),
+    timeZone: text("time_zone"),
+    controlCount: integer("control_count"),
+    payrollComplexity: integer("payroll_complexity"),
+    previousVendor: text("previous_vendor", { enum: ["IN_HOUSE", "NEW"] }),
+    notes: text("notes").notNull().default(""),
+    /** Date the team was assigned (set in Phase 3); fixes the fast start flag. */
+    assignedOn: text("assigned_on"),
+    stageChangedAt: integer("stage_changed_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch('subsec') * 1000)`),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("clients_company_code_unique").on(t.companyCode),
+    index("clients_stage_idx").on(t.lifecycleStage),
+    index("clients_first_input_idx").on(t.firstInputDate),
+  ],
+);
+
+export const clientStageHistory = sqliteTable(
+  "client_stage_history",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    clientId: integer("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "cascade" }),
+    /** Null for the entry recorded when the client was created. */
+    fromStage: text("from_stage", { enum: ["PROSPECT", "IMPLEMENTATION", "SERVICE"] }),
+    toStage: text("to_stage", { enum: ["PROSPECT", "IMPLEMENTATION", "SERVICE"] }).notNull(),
+    changedAt: timestamps.createdAt,
+    note: text("note").notNull().default(""),
+  },
+  (t) => [index("client_stage_history_client_idx").on(t.clientId, t.changedAt)],
+);
+
+/** Non-working days excluded from business-day counts. */
+export const holidays = sqliteTable("holidays", {
+  date: text("date").primaryKey(),
+  name: text("name").notNull(),
+  createdAt: timestamps.createdAt,
+});

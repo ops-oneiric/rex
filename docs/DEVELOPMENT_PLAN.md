@@ -1,7 +1,7 @@
 # Rex — Development Plan
 
 > Status: **v1.0, approved.** All open questions use their defaults (Section 13), and 2FA is out of scope (D11).
-> **Phases 0 and 1 are complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
+> **Phases 0, 1 and 2 are complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
 
 ---
 
@@ -229,9 +229,18 @@ As built in Phase 1: names are unique (case-insensitive), so the privacy layer c
 
 Stored or computed alongside: `assigned_on` (date the team was assigned), `is_fast_start` (computed), `workload_weight` (computed and recalculated when inputs change).
 
+As built in Phase 2:
+- Fast start and workload weight are **calculated on the fly** from the current settings and holiday list, never stored, so changing a weight or adding a holiday updates every client at once.
+- "Business days to first input" counts the business days *after* the start date up to and including the first input date (assigned Monday, first input next Monday = 5).
+- Before assignment, fast start is shown as a projection ("if assigned today"). Once Phase 3 sets `assigned_on`, it is fixed.
+- Clients move one stage at a time, forward or back, each move recorded with an optional note. Prospects need only a company code or a name. Every other field becomes required for Implementation and Service.
+- Company codes are exactly 3 letters or digits, stored uppercase and unique.
+
 For prospects, fields can be filled in gradually. Everything above is required before a client moves to **Implementation**.
 
 **`client_stage_history`**: client, from_stage, to_stage, changed_at, note.
+
+**`holidays`**: date, name. Seeded with US federal holidays (observed dates) for 2026-2028. Settings can add a year's federal holidays in one click, plus your own days.
 
 ### 5.3 Assignments and recommendations
 
@@ -399,7 +408,7 @@ You review each phase before the next starts.
 |---|---|---|---|
 | **0. Foundation** (done) | Repo, design tokens, glass components, sidebar, crown logo, login with lockout, database, settings with encrypted API key, CI, Docker | Log in and see the styled app | M |
 | **1. Associates** (done) | CRUD, seat eligibility (PM/Payroll), capabilities + proficiency, capability notes, PTO, directly-managed flag, capability list and home time zone in Settings | Enter your roster | M |
-| **2. Clients & lifecycle** | Your client fields, company code validation, lifecycle + history, prospect pipeline, Kanban, business-day calendar, fast start flag, workload weight | Enter your book of business and pipeline | M |
+| **2. Clients & lifecycle** (done) | Your client fields, company code validation, lifecycle + history, prospect pipeline, board view, business-day calendar with holidays, fast start flag, workload weight with editable formula, complexity scale | Enter your book of business and pipeline | M |
 | **3. Assignments & rules engine** | Seats per support model, manual assignment, capacity bands, PTO knock-outs, first input collisions, fact sheets, first input timeline, auto-close on Service | Assign by hand with every rule visible | M |
 | **4. AI recommendations** | Claude integration, privacy layer, team recommendations, review/accept/swap/override, history, test scenarios | Get recommended teams | L |
 | **5. Cadence** | Two-input entry, background analysis, action items, associate trend reports | Log 1:1s and get insights | M |
@@ -461,4 +470,4 @@ You approved the default for every question below (D10). They are kept here as a
 
 ## 14. Next step
 
-Phases 0 and 1 are done. **Phase 2 (Clients & lifecycle)** is next: your client fields, company code validation, lifecycle stages with history, the prospect pipeline, the business-day calendar with holidays, the fast start flag, and workload weights.
+Phases 0, 1 and 2 are done. **Phase 3 (Assignments & rules engine)** is next: filling each seat of a client's support model by hand, capacity bands per associate, PTO knock-outs, first input collisions, candidate fact sheets, the first input timeline, and closing assignments automatically when a client moves to Service.

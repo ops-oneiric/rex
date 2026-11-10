@@ -13,7 +13,18 @@ import { testConnection } from "@/lib/ai/client";
 import { isSupportedModel } from "@/lib/ai/models";
 import { EncryptionKeyError } from "@/lib/crypto/secrets";
 import { clientIp } from "@/lib/request";
-import { getAiModel, removeApiKey, saveApiKey, setAiModel, setHomeTimeZone } from "@/lib/settings";
+import {
+  getAiModel,
+  removeApiKey,
+  saveApiKey,
+  setAiModel,
+  setComplexityScale,
+  setHomeTimeZone,
+  setWeightSettings,
+} from "@/lib/settings";
+import { DEFAULT_WEIGHTS, weightSettingsSchema } from "@/lib/clients/weight";
+import { isIsoDate } from "@/lib/dates";
+import { addFederalHolidays, addHoliday, DuplicateHolidayError, removeHoliday } from "@/lib/holidays";
 import {
   createCapability,
   deleteCapability,
@@ -154,4 +165,92 @@ export async function deleteCapabilityAction(id: number) {
   deleteCapability(id);
   audit("capability.deleted", { id }, await clientIp());
   revalidatePath("/", "layout");
+}
+
+/* --------------------------------- Clients & rules --------------------------------- */
+
+export async function saveWeightsAction(_prev: FormResult, formData: FormData): Promise<FormResult> {
+  await requireAdmin();
+  const n = (key: string) => Number(String(formData.get(key) ?? "").trim() || NaN);
+  const parsed = weightSettingsSchema.safeParse({
+    base: n("base"),
+    employees50: n("employees50"),
+    employees200: n("employees200"),
+    employees500: n("employees500"),
+    perExtraControl: n("perExtraControl"),
+    controlCap: n("controlCap"),
+    complexity: [1, 2, 3, 4, 5].map((i) => n(`complexity${i}`)),
+    newLogo: n("newLogo"),
+    addControl: n("addControl"),
+    inHouse: n("inHouse"),
+    newVendor: n("newVendor"),
+    fastStart: n("fastStart"),
+  });
+  if (!parsed.success) {
+    return { ok: false, message: "Every value must be a number from 0 to 5.", values: formValues(formData) };
+  }
+  setWeightSettings(parsed.data);
+  audit("settings.weights_changed", parsed.data, await clientIp());
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Weights saved. Every client's weight now uses them." };
+}
+
+export async function resetWeightsAction(): Promise<FormResult> {
+  await requireAdmin();
+  setWeightSettings(DEFAULT_WEIGHTS);
+  audit("settings.weights_changed", { reset: true }, await clientIp());
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Weights reset to the defaults." };
+}
+
+export async function saveComplexityScaleAction(_prev: FormResult, formData: FormData): Promise<FormResult> {
+  await requireAdmin();
+  const scale = [1, 2, 3, 4, 5].map((i) => String(formData.get(`level${i}`) ?? "").trim());
+  if (scale.some((s) => s.length === 0 || s.length > 200)) {
+    return { ok: false, message: "Describe every level in 200 characters or fewer.", values: formValues(formData) };
+  }
+  setComplexityScale(scale as [string, string, string, string, string]);
+  audit("settings.complexity_changed", null, await clientIp());
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Complexity scale saved." };
+}
+
+export async function addHolidayAction(_prev: FormResult, formData: FormData): Promise<FormResult> {
+  await requireAdmin();
+  const date = String(formData.get("date") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const errors: Record<string, string> = {};
+  if (!isIsoDate(date)) errors.date = "Enter a date.";
+  if (!name || name.length > 80) errors.name = "Enter a name of up to 80 characters.";
+  if (Object.keys(errors).length) return { errors, values: formValues(formData) };
+  try {
+    addHoliday(date, name);
+  } catch (error) {
+    if (error instanceof DuplicateHolidayError) {
+      return { errors: { date: "That date is already a holiday." }, values: formValues(formData) };
+    }
+    throw error;
+  }
+  audit("holiday.added", { date, name }, await clientIp());
+  revalidatePath("/", "layout");
+  return { ok: true, message: `Added ${name}.` };
+}
+
+export async function removeHolidayAction(date: string) {
+  await requireAdmin();
+  removeHoliday(date);
+  audit("holiday.removed", { date }, await clientIp());
+  revalidatePath("/", "layout");
+}
+
+export async function addFederalHolidaysAction(year: number): Promise<FormResult> {
+  await requireAdmin();
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) return { ok: false, message: "Choose a valid year." };
+  const added = addFederalHolidays(year);
+  audit("holiday.added", { federalYear: year, added }, await clientIp());
+  revalidatePath("/", "layout");
+  return {
+    ok: true,
+    message: added ? `Added ${added} US federal holiday${added === 1 ? "" : "s"} for ${year}.` : `All ${year} federal holidays were already listed.`,
+  };
 }

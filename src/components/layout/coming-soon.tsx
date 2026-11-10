@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 /** Placeholder for pages that later phases will build. */
 export function ComingSoon({
@@ -7,14 +8,16 @@ export function ComingSoon({
   icon,
   title,
   points,
+  className,
 }: {
   phase: number;
   icon: React.ReactNode;
   title: string;
   points: string[];
+  className?: string;
 }) {
   return (
-    <Card className="max-w-2xl">
+    <Card className={cn("max-w-2xl", className)}>
       <div className="flex items-start gap-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-rex-100 text-rex-800 [&_svg]:size-5">
           {icon}

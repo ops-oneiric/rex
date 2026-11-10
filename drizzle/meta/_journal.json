@@ -22,6 +22,20 @@
       "when": 1794290414745,
       "tag": "0002_seed_capabilities",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1794328363838,
+      "tag": "0003_clients",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794328364488,
+      "tag": "0004_seed_holidays",
+      "breakpoints": true
     }
   ]
 }

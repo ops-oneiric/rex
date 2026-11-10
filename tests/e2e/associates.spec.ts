@@ -104,7 +104,7 @@ test("add an associate, set capabilities and PTO, then edit, deactivate and dele
 });
 
 test("manage the capability list in Settings", async ({ page }) => {
-  await signIn(page, "/settings");
+  await signIn(page, "/settings?tab=capabilities");
   const section = page.locator("#capabilities");
   await expect(section.getByText("Multi-Control", { exact: true })).toBeVisible();
 

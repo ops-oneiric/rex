@@ -15,26 +15,38 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { getApiKeyStatus } from "@/lib/settings";
 import { hasEncryptionKey } from "@/lib/crypto/secrets";
 import { countAssociates } from "@/lib/associates/data";
+import { listClients } from "@/lib/clients/data";
+import { addDays } from "@/lib/dates";
+import { today } from "@/lib/settings";
 
 export const metadata = { title: "Dashboard" };
 
-const stats = [
-  { label: "Awaiting assignment", icon: UserRoundPlus },
-  { label: "Active implementations", icon: Building2 },
-  { label: "First inputs, next 30 days", icon: CalendarClock },
-  { label: "Open escalations", icon: AlertTriangle },
-];
 
 export default async function DashboardPage() {
   await requireAdmin();
   const keyStatus = getApiKeyStatus();
+  const clients = listClients();
+  const implementations = clients.filter((c) => c.lifecycleStage === "IMPLEMENTATION");
+  const todayIso = today();
+  const in30 = addDays(todayIso, 30);
+  const stats = [
+    { label: "Awaiting assignment", icon: UserRoundPlus, value: implementations.filter((c) => !c.assignedOn).length, href: "/clients" },
+    { label: "Active implementations", icon: Building2, value: implementations.length, href: "/clients" },
+    {
+      label: "First inputs, next 30 days",
+      icon: CalendarClock,
+      value: implementations.filter((c) => c.firstInputDate && c.firstInputDate >= todayIso && c.firstInputDate <= in30).length,
+      href: "/clients",
+    },
+    { label: "Open escalations", icon: AlertTriangle, value: 0, href: null },
+  ];
 
   const checklist = [
     { done: true, label: "Admin account created", href: null },
     { done: hasEncryptionKey(), label: "Encryption key configured on the server", href: "/settings" },
     { done: keyStatus.configured, label: "Claude API key saved", href: "/settings" },
     { done: countAssociates() > 0, label: "Add your associates", href: "/associates/new" },
-    { done: false, label: "Add clients and prospects (Phase 2)", href: null },
+    { done: clients.length > 0, label: "Add clients and prospects", href: "/clients/new" },
   ];
 
   return (
@@ -42,15 +54,26 @@ export default async function DashboardPage() {
       <PageHeader title="Dashboard" description="Your book of business at a glance." />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map(({ label, icon: Icon }) => (
-          <Card key={label} className="p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-ink-muted">{label}</span>
-              <Icon className="size-4 text-rex-500" aria-hidden="true" />
-            </div>
-            <p className="tabular mt-3 text-3xl font-semibold text-rex-950">0</p>
-          </Card>
-        ))}
+        {stats.map(({ label, icon: Icon, value, href }) => {
+          const body = (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-ink-muted">{label}</span>
+                <Icon className="size-4 text-rex-500" aria-hidden="true" />
+              </div>
+              <p className="tabular mt-3 text-3xl font-semibold text-rex-950">{value}</p>
+            </>
+          );
+          return href ? (
+            <Link key={label} href={href} className="glass block p-5 transition hover:bg-white/70">
+              {body}
+            </Link>
+          ) : (
+            <Card key={label} className="p-5">
+              {body}
+            </Card>
+          );
+        })}
       </div>
 
       <Card className="mt-6 max-w-2xl">

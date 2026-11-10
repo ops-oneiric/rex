@@ -34,7 +34,7 @@ export function CapabilityEditor({
               Matched against each client&apos;s needs when Rex recommends a team.
             </p>
           </div>
-          <Link href="/settings#capabilities" className="text-sm text-rex-700 hover:text-rex-900">
+          <Link href="/settings?tab=capabilities" className="text-sm text-rex-700 hover:text-rex-900">
             Edit the capability list
           </Link>
         </div>

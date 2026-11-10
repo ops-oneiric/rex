@@ -4,10 +4,11 @@ A private, single-admin web app for managing associates, assigning incoming clie
 
 The full plan, including decisions and phases, is in [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md).
 
-**Status:** Phases 0 and 1 are complete.
+**Status:** Phases 0, 1 and 2 are complete.
 
 - **Phase 0, foundation:** login, layout, design system, encrypted Claude API key in Settings, Docker deployment and CI.
 - **Phase 1, associates:** roster with search and filters, PM/Payroll seats, capability levels and notes, PTO, the directly-managed flag, plus the capability list and your time zone in Settings.
+- **Phase 2, clients:** prospects, implementations and service clients with stage history, table and board views, business days with holidays, fast-start flags and workload weights, plus the weight formula, complexity scale and holiday list in Settings.
 
 ## Stack
 

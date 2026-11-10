@@ -22,7 +22,15 @@ export type AuditAction =
   | "pto.deleted"
   | "capability.created"
   | "capability.updated"
-  | "capability.deleted";
+  | "capability.deleted"
+  | "client.created"
+  | "client.updated"
+  | "client.stage_changed"
+  | "client.deleted"
+  | "holiday.added"
+  | "holiday.removed"
+  | "settings.weights_changed"
+  | "settings.complexity_changed";
 
 export function audit(action: AuditAction, detail: Record<string, unknown> | null = null, ip: string | null = null) {
   db.insert(schema.auditLog).values({ action, detail, ip }).run();

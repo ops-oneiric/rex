@@ -20,12 +20,12 @@ test("wrong password shows a generic error", async ({ page }) => {
 });
 
 test("admin can sign in, navigate, and sign out", async ({ page }) => {
-  await page.goto("/login?next=/settings");
+  await page.goto("/login?next=/settings?tab=claude");
   await page.getByLabel("Username").fill(E2E_ADMIN.username);
   await page.getByLabel("Password").fill(E2E_ADMIN.password);
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page).toHaveURL(/\/settings\?tab=claude$/);
   await expect(page.getByRole("heading", { name: "Settings", level: 1 })).toBeVisible();
   await expect(page.getByText("No key saved")).toBeVisible();
 
@@ -41,11 +41,11 @@ test("admin can sign in, navigate, and sign out", async ({ page }) => {
 });
 
 test("API key is stored and shown only by its last four characters", async ({ page }) => {
-  await page.goto("/login?next=/settings");
+  await page.goto("/login?next=/settings?tab=claude");
   await page.getByLabel("Username").fill(E2E_ADMIN.username);
   await page.getByLabel("Password").fill(E2E_ADMIN.password);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page).toHaveURL(/\/settings\?tab=claude$/);
 
   // A fake key: the connection test will fail, but the key must still be saved encrypted.
   await page.getByLabel("API key").fill("sk-ant-e2e-fake-key-000000000000wxyz");
