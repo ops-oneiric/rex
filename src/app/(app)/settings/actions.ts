@@ -13,7 +13,16 @@ import { testConnection } from "@/lib/ai/client";
 import { isSupportedModel } from "@/lib/ai/models";
 import { EncryptionKeyError } from "@/lib/crypto/secrets";
 import { clientIp } from "@/lib/request";
-import { getAiModel, removeApiKey, saveApiKey, setAiModel } from "@/lib/settings";
+import { getAiModel, removeApiKey, saveApiKey, setAiModel, setHomeTimeZone } from "@/lib/settings";
+import {
+  createCapability,
+  deleteCapability,
+  DuplicateNameError,
+  updateCapability,
+} from "@/lib/associates/data";
+import { capabilitySchema } from "@/lib/associates/validation";
+import { fieldErrors, formValues, type FormResult } from "@/lib/forms";
+import { isValidTimeZone } from "@/lib/time-zones";
 
 export type FormState = { ok?: boolean; message?: string };
 
@@ -82,4 +91,67 @@ export async function changePasswordAction(_prev: FormState, formData: FormData)
   await destroyOtherSessions();
   audit("password.changed", null, await clientIp());
   return { ok: true, message: "Password changed. Any other signed-in browsers were signed out." };
+}
+
+/* ---------------------------- General and capabilities ---------------------------- */
+
+export async function saveTimeZoneAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const timeZone = String(formData.get("timeZone") ?? "");
+  if (!isValidTimeZone(timeZone)) return { ok: false, message: "Choose a time zone from the list." };
+  setHomeTimeZone(timeZone);
+  audit("settings.time_zone_changed", { timeZone }, await clientIp());
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Time zone saved." };
+}
+
+export async function createCapabilityAction(_prev: FormResult, formData: FormData): Promise<FormResult> {
+  await requireAdmin();
+  const parsed = capabilitySchema.safeParse({
+    name: String(formData.get("name") ?? ""),
+    description: String(formData.get("description") ?? ""),
+  });
+  if (!parsed.success) return { errors: fieldErrors(parsed.error), values: formValues(formData) };
+  try {
+    createCapability(parsed.data);
+  } catch (error) {
+    if (error instanceof DuplicateNameError) {
+      return { errors: { name: "A capability with this name already exists." }, values: formValues(formData) };
+    }
+    throw error;
+  }
+  audit("capability.created", { name: parsed.data.name }, await clientIp());
+  revalidatePath("/", "layout");
+  return { ok: true, message: `Added "${parsed.data.name}".` };
+}
+
+export async function updateCapabilityAction(
+  id: number,
+  _prev: FormResult,
+  formData: FormData,
+): Promise<FormResult> {
+  await requireAdmin();
+  const parsed = capabilitySchema.safeParse({
+    name: String(formData.get("name") ?? ""),
+    description: String(formData.get("description") ?? ""),
+  });
+  if (!parsed.success) return { errors: fieldErrors(parsed.error), values: formValues(formData) };
+  try {
+    updateCapability(id, parsed.data);
+  } catch (error) {
+    if (error instanceof DuplicateNameError) {
+      return { errors: { name: "A capability with this name already exists." }, values: formValues(formData) };
+    }
+    throw error;
+  }
+  audit("capability.updated", { id, name: parsed.data.name }, await clientIp());
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export async function deleteCapabilityAction(id: number) {
+  await requireAdmin();
+  deleteCapability(id);
+  audit("capability.deleted", { id }, await clientIp());
+  revalidatePath("/", "layout");
 }

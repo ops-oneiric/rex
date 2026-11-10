@@ -3,9 +3,12 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { decryptSecret, encryptSecret } from "@/lib/crypto/secrets";
 import { DEFAULT_MODEL, isSupportedModel, type ModelId } from "@/lib/ai/models";
+import { todayIn } from "@/lib/dates";
+import { DEFAULT_TIME_ZONE, isValidTimeZone } from "@/lib/time-zones";
 
 const AI_KEY_SECRET = "anthropic_api_key";
 const AI_MODEL_SETTING = "ai.model";
+const HOME_TIME_ZONE_SETTING = "app.timeZone";
 
 function getSetting<T>(key: string): T | undefined {
   const row = db.select().from(schema.settings).where(eq(schema.settings.key, key)).get();
@@ -17,6 +20,20 @@ function setSetting(key: string, value: unknown) {
     .values({ key, value })
     .onConflictDoUpdate({ target: schema.settings.key, set: { value, updatedAt: new Date() } })
     .run();
+}
+
+/** Your own time zone. Decides what "today" means across Rex. */
+export function getHomeTimeZone(): string {
+  const stored = getSetting<string>(HOME_TIME_ZONE_SETTING);
+  return stored && isValidTimeZone(stored) ? stored : DEFAULT_TIME_ZONE;
+}
+
+export function setHomeTimeZone(timeZone: string) {
+  setSetting(HOME_TIME_ZONE_SETTING, timeZone);
+}
+
+export function today(): string {
+  return todayIn(getHomeTimeZone());
 }
 
 export function getAiModel(): ModelId {

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 const timestamps = {
   createdAt: integer("created_at", { mode: "timestamp_ms" })
@@ -56,3 +56,77 @@ export const auditLog = sqliteTable("audit_log", {
   detail: text("detail", { mode: "json" }),
   ip: text("ip"),
 });
+
+/* ---------------------------------- Phase 1: Associates ---------------------------------- */
+
+export const associates = sqliteTable(
+  "associates",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** Never sent to Claude: replaced with an alias by the privacy layer. */
+    name: text("name").notNull(),
+    email: text("email"),
+    title: text("title"),
+    /** IANA zone, e.g. America/Chicago. */
+    timeZone: text("time_zone").notNull(),
+    canPm: integer("can_pm", { mode: "boolean" }).notNull().default(false),
+    canPayroll: integer("can_payroll", { mode: "boolean" }).notNull().default(false),
+    /** Personal target load in weighted units (healthy band is 5-10). */
+    targetLoad: real("target_load").notNull().default(8),
+    /** Controls who appears in Cadence. */
+    isDirectlyManaged: integer("is_directly_managed", { mode: "boolean" }).notNull().default(false),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    /** Free text about strengths and preferences; read by Claude after scrubbing. */
+    capabilityNotes: text("capability_notes").notNull().default(""),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("associates_name_unique").on(sql`lower(${t.name})`)],
+);
+
+export const capabilities = sqliteTable(
+  "capabilities",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    sortOrder: integer("sort_order").notNull().default(0),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("capabilities_name_unique").on(sql`lower(${t.name})`)],
+);
+
+/** Proficiency: 1 = learning, 2 = proficient, 3 = expert. */
+export const associateCapabilities = sqliteTable(
+  "associate_capabilities",
+  {
+    associateId: integer("associate_id")
+      .notNull()
+      .references(() => associates.id, { onDelete: "cascade" }),
+    capabilityId: integer("capability_id")
+      .notNull()
+      .references(() => capabilities.id, { onDelete: "cascade" }),
+    proficiency: integer("proficiency").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.associateId, t.capabilityId] }),
+    index("associate_capabilities_capability_idx").on(t.capabilityId),
+  ],
+);
+
+/** Dates are calendar dates as YYYY-MM-DD, inclusive at both ends. */
+export const associatePto = sqliteTable(
+  "associate_pto",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    associateId: integer("associate_id")
+      .notNull()
+      .references(() => associates.id, { onDelete: "cascade" }),
+    startDate: text("start_date").notNull(),
+    endDate: text("end_date").notNull(),
+    /** Partial day off (single-day entries only). */
+    isPartialDay: integer("is_partial_day", { mode: "boolean" }).notNull().default(false),
+    note: text("note").notNull().default(""),
+    ...timestamps,
+  },
+  (t) => [index("associate_pto_associate_dates_idx").on(t.associateId, t.startDate)],
+);

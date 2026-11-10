@@ -14,6 +14,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { requireAdmin } from "@/lib/auth/dal";
 import { getApiKeyStatus } from "@/lib/settings";
 import { hasEncryptionKey } from "@/lib/crypto/secrets";
+import { countAssociates } from "@/lib/associates/data";
 
 export const metadata = { title: "Dashboard" };
 
@@ -32,7 +33,7 @@ export default async function DashboardPage() {
     { done: true, label: "Admin account created", href: null },
     { done: hasEncryptionKey(), label: "Encryption key configured on the server", href: "/settings" },
     { done: keyStatus.configured, label: "Claude API key saved", href: "/settings" },
-    { done: false, label: "Add your associates (Phase 1)", href: null },
+    { done: countAssociates() > 0, label: "Add your associates", href: "/associates/new" },
     { done: false, label: "Add clients and prospects (Phase 2)", href: null },
   ];
 

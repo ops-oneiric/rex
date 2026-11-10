@@ -1,7 +1,7 @@
 # Rex — Development Plan
 
 > Status: **v1.0, approved.** All open questions use their defaults (Section 13), and 2FA is out of scope (D11).
-> **Phase 0 is complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
+> **Phases 0 and 1 are complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
 
 ---
 
@@ -21,6 +21,7 @@
 | D10 | Open questions | **All defaults in Section 13 adopted.** |
 | D11 | Login | **No two-factor authentication.** Strong password rules, account lockout and per-IP rate limiting protect the login instead (Section 10). |
 | D12 | Database layer | **Drizzle ORM** instead of Prisma (implementation choice): migrations run inside the app at startup, so the Docker image needs no extra CLI or engine binaries. |
+| D13 | Home time zone | Rex has a **"Your time zone"** setting (default Central) that decides what "today" means, e.g. which PTO is current. |
 
 ---
 
@@ -202,7 +203,9 @@ Table and column sketches; final names are in the Drizzle schema (`src/lib/db/sc
 
 **`associate_capabilities`**: associate ↔ capability with **proficiency** (1 = learning, 2 = proficient, 3 = expert).
 
-**`associate_pto`**: associate, start_date, end_date, partial-day flag, note.
+**`associate_pto`**: associate, start_date, end_date, partial-day flag, note. Entries for the same associate may not overlap, a partial day must be a single date, and one entry covers at most 120 days.
+
+As built in Phase 1: names are unique (case-insensitive), so the privacy layer can map them unambiguously. Associates can be deactivated (kept for history, excluded from recommendations) or deleted (removes their capabilities and PTO).
 
 ### 5.2 Clients (your fields)
 
@@ -395,7 +398,7 @@ You review each phase before the next starts.
 | Phase | Scope | You can... | Size |
 |---|---|---|---|
 | **0. Foundation** (done) | Repo, design tokens, glass components, sidebar, crown logo, login with lockout, database, settings with encrypted API key, CI, Docker | Log in and see the styled app | M |
-| **1. Associates** | CRUD, seat eligibility (PM/Payroll), capabilities + proficiency, capability notes, PTO, directly-managed flag | Enter your roster | M |
+| **1. Associates** (done) | CRUD, seat eligibility (PM/Payroll), capabilities + proficiency, capability notes, PTO, directly-managed flag, capability list and home time zone in Settings | Enter your roster | M |
 | **2. Clients & lifecycle** | Your client fields, company code validation, lifecycle + history, prospect pipeline, Kanban, business-day calendar, fast start flag, workload weight | Enter your book of business and pipeline | M |
 | **3. Assignments & rules engine** | Seats per support model, manual assignment, capacity bands, PTO knock-outs, first input collisions, fact sheets, first input timeline, auto-close on Service | Assign by hand with every rule visible | M |
 | **4. AI recommendations** | Claude integration, privacy layer, team recommendations, review/accept/swap/override, history, test scenarios | Get recommended teams | L |
@@ -458,4 +461,4 @@ You approved the default for every question below (D10). They are kept here as a
 
 ## 14. Next step
 
-Phase 0 is done. **Phase 1 (Associates)** is next: the roster, PM/payroll seat eligibility, capability tags with proficiency, capability notes, PTO, and the directly-managed flag.
+Phases 0 and 1 are done. **Phase 2 (Clients & lifecycle)** is next: your client fields, company code validation, lifecycle stages with history, the prospect pipeline, the business-day calendar with holidays, the fast start flag, and workload weights.
