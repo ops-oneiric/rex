@@ -1,7 +1,23 @@
 # Rex — Development Plan (Draft for Review)
 
-> Status: **Draft v0.1, awaiting your answers to the open questions in Section 12.**
-> Nothing below is final. Every assumption I made is marked **[Assumption]** so you can confirm or correct it.
+> Status: **Draft v0.2.** Your first round of answers is built in (see Section 0). The questions still open are in Section 13, each with the default I'll use if you'd rather not decide now.
+> Anything still marked **[Assumption]** is mine and needs your confirmation.
+
+---
+
+## 0. Decisions so far
+
+| # | Topic | Decision |
+|---|---|---|
+| D1 | Key date | **First input date** = the client's first payroll (go-live). It is the main date for choosing associates. |
+| D2 | Fast start | Fewer than **20 business days** between assignment and first input = **fast start**. |
+| D3 | Support models | **Hybrid** (1): one associate does PM and payroll. **Traditional** (2): 1 PM + 1 payroll. **PM model** (3): 1 PM + 2 payroll. **You choose** the support model; Rex recommends who fills each seat. |
+| D4 | Capacity | **Weighted by workload.** Target is about **5–10 active main accounts** per associate. Associates should **not** have several clients with first input dates close together. |
+| D5 | Top factor | **PTO near key dates is the main knock-out factor**, most of all for associates in the payroll role. |
+| D6 | AI key | You enter your Claude API key in **Settings**. It is stored encrypted on the server. |
+| D7 | Privacy | Sensitive identifiers are **coded before anything is sent to Claude**. **1:1 notes are sent as written.** |
+| D8 | Hosting | Your own server. **No network restrictions**, so it is reachable from anywhere and the login has to be strong (Section 10). |
+| D9 | Data | **No existing data to import.** Client fields are the ones you listed (Section 5.2). |
 
 ---
 
@@ -9,39 +25,39 @@
 
 Rex is a private, single-user web app for running your book of business:
 
-1. **Associates**: who they are, what they're good at, when they're out, and how loaded they are.
+1. **Associates**: who they are, which roles they can fill, what they're good at, when they're out, and how loaded they are.
 2. **Clients**: from prospect to implementation to service, with the attributes that drive assignment.
-3. **Assignments**: putting the right associate(s) on each incoming client, with a generative-model recommendation as the main feature.
-4. **Cadence (1:1s)**: a date and free-text notes per meeting. The model pulls out action items, strengths, weak points, skills and trends.
-5. **Escalations**: a date and free-text details. The model pulls out the client, the associates involved, category, severity, fault and root cause, and finds trends over time.
-
-Later features plug into the same structure (see Section 10).
+3. **Assignments**: filling each seat of a client's support model with the right associate, with a Claude recommendation as the main feature.
+4. **Cadence (1:1s)**: a date and free-text notes. Claude pulls out action items, strengths, weak points, skills and trends.
+5. **Escalations**: a date and free-text details. Claude pulls out the client, the associates involved, category, severity, fault and root cause, and finds trends.
 
 ### Guiding principles
 
-- **Minimal input, maximal inference.** Where you asked for two inputs (Cadence, Escalations), the form has exactly two. Everything else is inferred, and you can review and correct it afterwards.
-- **The model advises, you decide.** Recommendations and extracted fields are always proposals. You accept, edit or override them, and Rex records what you chose.
-- **Hard rules in code, judgment in the model.** Capacity math, PTO overlap and date collisions are computed exactly in code. The model weighs those facts and explains its choice. It never does arithmetic on raw data.
-- **Everything auditable.** Each AI output is stored with the exact inputs it saw, the model used and the prompt version, so you can always see why it said what it said.
+- **Minimal input, maximal inference.** Cadence and Escalations have exactly two inputs. Everything else is inferred, and you can review and correct it afterwards.
+- **The model advises, you decide.** Recommendations and extracted fields are proposals. You accept, edit or override them, and Rex records your choice.
+- **Hard rules in code, judgment in the model.** Business days, PTO knock-outs, date collisions and capacity are calculated exactly in code. Claude weighs those facts and explains its choice. It never does the date or load arithmetic itself.
+- **Sensitive data never leaves unprotected.** Identifiers are swapped for codes on your server before any request to Claude (Section 7).
+- **Everything auditable.** Each AI result is stored with exactly what was sent, the model used and the prompt version.
 
 ---
 
-## 2. Recommended technology stack
+## 2. Technology stack
 
 | Layer | Choice | Why |
 |---|---|---|
-| Framework | **Next.js (App Router) + TypeScript** | One codebase for UI and server logic. Server Actions keep forms simple. Type safety from the database up to the UI. |
+| Framework | **Next.js (App Router) + TypeScript** | One codebase for UI and server logic. Type safety from the database up to the UI. |
 | Styling | **Tailwind CSS** with design tokens | Makes the glass/gradient look easy to keep consistent. |
-| Components | **shadcn/ui** (Radix primitives) | Accessible and unstyled by default, so the components get Rex's look and not a generic one. |
-| Icons | **Lucide** | Clean line icons, and it includes `Crown` for the logo. No emojis anywhere. |
-| Charts | **Recharts** | Trend charts for escalations and cadence. |
-| Database | **SQLite** (single file) via **Prisma** ORM **[Assumption]** | You are the only user, so SQLite is fast, needs no setup and is trivial to back up. Prisma can move it to PostgreSQL later without rewriting the app. |
-| AI | **Anthropic Claude API**, official TypeScript SDK, model `claude-opus-5-5` by default **[Assumption]** | Strong reasoning for multi-factor fit decisions. Structured outputs give guaranteed-valid JSON. The model can be changed in Settings. |
-| Auth | Single admin account, password hashed with **argon2id**, httpOnly session cookie, optional TOTP 2FA | Fits "only I will access it". |
-| Validation | **Zod** | One schema shared by forms, server actions and AI output parsing. |
-| Testing | **Vitest** (unit), **Playwright** (end-to-end) | Capacity and scoring logic is unit-tested heavily. AI calls are mocked in tests. |
-| Deployment | **Docker Compose**: app container + **Caddy** reverse proxy (automatic HTTPS) | One command to deploy on any Linux server. |
-| Backups | Nightly encrypted SQLite snapshot (with optional off-server copy) | Your data is the asset, so backups come from day one. |
+| Components | **shadcn/ui** (Radix primitives) | Accessible, and styled to Rex's look rather than a generic one. |
+| Icons | **Lucide** line icons, including `Crown` for the logo | No emojis anywhere. A lint rule fails the build if one appears. |
+| Charts | **Recharts** | Capacity timelines and escalation trends. |
+| Database | **SQLite** via **Prisma** | Single user, so this needs no setup and is easy to back up. It can move to PostgreSQL later. |
+| AI | **Anthropic Claude API**, official TypeScript SDK, default model `claude-opus-5-5` (changeable in Settings) | Strong multi-factor reasoning. Structured outputs give guaranteed-valid JSON. |
+| Auth | Single admin, **argon2id** password hash, httpOnly session cookie, **TOTP 2FA** | Important now that the server is reachable from anywhere. |
+| Secrets | API key encrypted at rest (**AES-256-GCM**), master key in a server environment variable | The key is never stored in plain text or sent to the browser. |
+| Validation | **Zod** | One schema for forms, server actions and AI output. |
+| Testing | **Vitest** (unit), **Playwright** (end-to-end) | Rules engine tested heavily. AI calls mocked in tests. |
+| Deployment | **Docker Compose**: app + **Caddy** (automatic HTTPS) | One command to deploy on your server. |
+| Backups | Nightly encrypted SQLite snapshot, 30-day retention | Protects your data from day one. |
 
 ---
 
@@ -54,12 +70,11 @@ Later features plug into the same structure (see Section 10).
   - `--rex-primary-700: #5B21B6` (hover, active nav)
   - `--rex-primary-500: #8B5CF6` (accents, focus rings, charts)
   - `--rex-primary-100: #EDE9FE` (subtle fills, selected rows)
-- **Background:** soft light-purple gradient fixed to the viewport, for example `linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 45%, #E9DDFB 100%)`, with one or two large, very soft blurred color shapes for depth.
-- **Glass surfaces:** cards and panels use `background: rgba(255,255,255,0.55)`, `backdrop-filter: blur(16px) saturate(140%)`, a 1px `rgba(255,255,255,0.6)` border, a soft purple-tinted shadow and a 16px radius.
-- **Typography:** Inter (or Geist), generous whitespace, numbers in tabular figures.
-- **Status colors** (used sparingly, always paired with a text label): lifecycle stages, severity and capacity bands.
-- **Logo:** a simple line `Crown` icon in a dark-purple rounded square, followed by "Rex" in the wordmark. The favicon is the same crown.
-- **Icons:** Lucide line icons only. **No emojis**, enforced by a lint rule that fails the build if an emoji appears in UI strings.
+- **Background:** soft light-purple gradient fixed to the viewport, e.g. `linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 45%, #E9DDFB 100%)`, with one or two large, very soft blurred shapes for depth.
+- **Glass surfaces:** `rgba(255,255,255,0.55)` fill, `backdrop-filter: blur(16px) saturate(140%)`, 1px `rgba(255,255,255,0.6)` border, soft purple-tinted shadow, 16px radius.
+- **Typography:** Inter (or Geist), generous whitespace, tabular figures for numbers.
+- **Status colors** (used sparingly, always with a text label): lifecycle stage, fast start, severity, capacity band, PTO conflict.
+- **Logo:** a line `Crown` icon in a dark-purple rounded square, followed by "Rex". The favicon is the same crown.
 
 ### 3.2 Layout
 
@@ -82,60 +97,87 @@ Later features plug into the same structure (see Section 10).
 ```
 
 - **Left sidebar:** dark-purple glass, icon plus label, collapsible to icons only. The active item has a light pill highlight.
-- **Sidebar items:** Dashboard, Clients, Assign, Associates, Cadence, Escalations, Insights, then Settings and Sign out at the bottom.
-- **Responsive:** fully usable on a laptop. On a phone the sidebar becomes a slide-out drawer. **[Assumption: desktop first]**
+- **Responsive:** desktop first. On a phone the sidebar becomes a slide-out drawer. **[Assumption]**
 
 ---
 
-## 4. Domain model
+## 4. Domain rules
 
 ### 4.1 Client lifecycle
 
 ```
  PROSPECT  ──►  IMPLEMENTATION  ──►  SERVICE
- (pipeline;     (on book of          (off book; not counted
-  can be held    business; counts     toward capacity; kept
-  tentatively)   toward capacity)     for history and trends)
+ (pipeline)     (on book of          (off book; not counted
+                 business; counts     toward capacity; kept
+                 toward capacity)     for history and trends)
 ```
 
-- Each stage change is recorded with a timestamp in a history table, so you can later see how long implementations take.
-- When a client moves to **Service**, its assignments are closed automatically (end date set). The history stays, but the client no longer counts toward any associate's capacity.
-- **Prospects** don't count toward capacity by default. Optionally you can place a **tentative hold** on an associate for a prospect. It shows as *projected* load, separate from actual load. **[See Question Q7]**
+- Each stage change is recorded with a timestamp, so implementation durations can be reported later.
+- Moving a client to **Service** automatically closes its assignments (end date set). History stays, but the client stops counting toward capacity.
+- **Prospects** don't count toward capacity. Optionally you can place a **tentative hold** on an associate, shown as *projected* load. **[Q11]**
 
-### 4.2 Service models (team size per account)
+### 4.2 Support models and seats
 
-| Service model | Associates on account | Roles (to be confirmed, see Q4) |
+| Support model | Seats Rex fills |
+|---|---|
+| Hybrid | 1 × **Hybrid** (PM + payroll) |
+| Traditional | 1 × **PM**, 1 × **Payroll** |
+| PM model | 1 × **PM**, 2 × **Payroll** |
+
+- You set the support model on the client. The recommender fills every seat as a team.
+- Each associate is marked with the roles they can fill (PM, Payroll, or both). Only associates who can do both are eligible for a Hybrid seat. **[Q10]**
+- For PTO rules, a **Hybrid seat counts as a payroll seat** because it includes payroll work.
+
+### 4.3 Business days and fast start
+
+- **Business days** = weekdays minus holidays from a list in Settings (seeded with US federal holidays). **[Q8]**
+- **Fast start** = fewer than 20 business days from the assignment date to the first input date. Rex calculates this live: on the Assign screen it uses today's date, and once assigned it is fixed to the actual assignment date.
+- Fast starts are flagged on the client, add workload weight (Section 4.4), and tighten the PTO rules (Section 4.5).
+
+### 4.4 Workload weight and capacity
+
+Each client gets a **workload weight** scaled so a typical account ≈ **1.0**, which keeps your **5–10 accounts** target meaningful. Default formula, all values editable in Settings **[Assumption, adjust to taste]**:
+
+```
+weight = 0.5
+       + employee band       (1–49: 0 | 50–199: 0.2 | 200–499: 0.4 | 500+: 0.6)
+       + control count       0.1 × (controls − 1), max +0.5
+       + payroll complexity  (1: 0 | 2: 0.1 | 3: 0.2 | 4: 0.3 | 5: 0.4)
+       + implementation type (New Logo: 0.2 | Add Control: 0)
+       + previous vendor     (adjustment per value, default 0)   [Q2]
+       + fast start          +0.2
+```
+
+Example: 120 employees, 1 control, complexity 3, New Logo, normal start → 0.5 + 0.2 + 0 + 0.2 + 0.2 = **1.1**.
+
+**Share of weight by seat [Q7]:** Hybrid 100%. Traditional: PM 40%, Payroll 60%. PM model: PM 40%, each Payroll 30%.
+
+**Associate load = sum of their seat weights on Implementation clients.** Bands (editable): under 5 = *Available*, 5–8 = *Healthy*, 8–10 = *Full*, over 10 = *Over capacity*. Account count is shown next to it.
+
+### 4.5 Assignment rules (deterministic, in code)
+
+Applied in priority order. Your answers set the first two. The order of the rest is my proposal and can be changed in Settings.
+
+| Priority | Rule | Effect |
 |---|---|---|
-| Hybrid | 1 | One associate covers everything |
-| Traditional | 2 | e.g. Implementation Specialist + Payroll Specialist |
-| PM | 3 | e.g. Project Manager + Implementation Specialist + Payroll Specialist |
+| **1. PTO knock-out** | Payroll/Hybrid seat: any PTO from **5 business days before through 2 after** the first input date | **Excluded** from that seat (shown in a separate "Excluded" list with the reason, and you can still pick them). |
+| | PM seat: PTO in the same window | Heavy penalty and a red flag. Not a knock-out. **[Q5]** |
+| | Fast start: PTO between assignment and first input (payroll/hybrid seat) | Heavy penalty and a red flag |
+| | PTO within ±3 business days of the benefits start date | Moderate penalty and a flag |
+| **2. First input collisions** | Another active client of theirs has a first input date **within 5 business days** | Strong penalty, "Conflict" flag |
+| | Within 6–10 business days | Mild penalty, "Close" flag **[Q6]** |
+| **3. Capacity** | Projected load after this assignment vs. the 5–10 band | Penalty rises past 8, and is strong past 10 |
+| **4. Capability fit** | Capability tags and proficiency vs. complexity, control count, employee count | Bonus for strong fit |
+| **5. Time zone** | Offset between associate and client | Penalty per hour of difference **[Q9]** |
+| **6. Experience** | Past accounts with the same implementation type and previous-vendor type | Small bonus |
 
-The service model is stored on the client. Each assignment records the **role** the associate fills, and Rex checks that the number of active assignments matches the service model.
-
-### 4.3 Capacity
-
-Capacity is calculated from active assignments on clients in **Implementation** only.
-
-- **Count load:** number of active implementation accounts.
-- **Weighted load [Assumption, see Q6]:** each client gets a workload weight. A starting formula, adjustable in Settings:
-
-  ```
-  weight = 1.0
-         + employee band   (1–49: 0 | 50–199: 0.5 | 200–499: 1.0 | 500+: 1.5)
-         + 0.25 × (FEIN count − 1)
-         + complexity      (1 → 0, 2 → 0.25, 3 → 0.5, 4 → 0.75, 5 → 1.0)
-         + new logo bonus  (New Logo: 0.5 | Add Control: 0)
-  ```
-
-  For multi-associate accounts, the weight can be split by role (for example the PM carries 40%), also configurable.
-- Each associate has an optional **target capacity**. Rex shows load as a percentage band: Available / Healthy / Stretched / Over.
-- **Date collision load:** besides total load, Rex looks at *when* the work lands. Each client has **critical windows** around its payroll input date and benefits start date (default: 14 days before through 3 days after, configurable). An associate with three critical windows in the same week is riskier than one with the same total load spread out.
+Each candidate gets a **fact sheet** listing these values. That fact sheet is what Claude sees (Section 6).
 
 ---
 
 ## 5. Database design
 
-Table and column sketches (final names in the Prisma schema). `id` columns are CUIDs and every table has `created_at` / `updated_at`.
+Table and column sketches; final names will be in the Prisma schema. Every table has `id`, `created_at` and `updated_at`.
 
 ### 5.1 Associates
 
@@ -143,294 +185,274 @@ Table and column sketches (final names in the Prisma schema). `id` columns are C
 
 | Column | Type | Notes |
 |---|---|---|
-| name | text | |
-| email | text, optional | |
+| name | text | Never sent to Claude (coded, see Section 7) |
+| email | text, optional | Never sent to Claude |
 | title | text, optional | |
 | time_zone | text (IANA, e.g. `America/Chicago`) | |
-| working_hours_start / end | time, optional | Gives precise time-zone overlap |
-| target_capacity | decimal, optional | Weighted units |
-| is_directly_managed | boolean | **Controls who appears in Cadence.** Off for associates you don't manage. |
-| is_active | boolean | Inactive associates are hidden from recommendations but keep their history. |
-| capability_notes | long text | Free text about strengths and preferences. The model reads this. |
-| hire_date | date, optional | Optional tenure signal |
+| can_pm / can_payroll | boolean | Which seats they can fill. Both = Hybrid-eligible. |
+| target_load | decimal, default 8 | Personal target within the 5–10 band |
+| is_directly_managed | boolean | **Controls who appears in Cadence** |
+| is_active | boolean | Inactive associates are excluded from recommendations but keep their history |
+| capability_notes | long text | Free text about strengths and preferences. Sent to Claude after names and codes are scrubbed. |
 
-**`capabilities`**: a list you control (name, description, category). Seeded with examples such as: Multi-FEIN, Multi-State, Union / Certified Payroll, Complex Benefits, Large Employer (500+), New Logo Implementations, Add Control / Conversions, Time and Attendance, Integrations / Third-party Data, Garnishments, PM-qualified, Spanish-speaking. **[See Q5]**
+**`capabilities`**: a list you control. Example seeds: Multi-Control, Large Employer (500+), Complex Payroll, Benefits-heavy, New Logo, Add Control, In-house Conversions, Time and Attendance, Integrations, Garnishments, Multi-State, Union / Certified Payroll. **[Q10]**
 
-**`associate_capabilities`**: associate ↔ capability with a **proficiency level** (1 = learning, 2 = proficient, 3 = expert).
+**`associate_capabilities`**: associate ↔ capability with **proficiency** (1 = learning, 2 = proficient, 3 = expert).
 
-So "a field to designate their capabilities" is two things: structured capability tags (filterable and scoreable) **plus** a free-text notes field for nuance the model can read.
+**`associate_pto`**: associate, start_date, end_date, partial-day flag, note.
 
-**`associate_pto`**: associate, start_date, end_date, type (PTO / holiday / leave / partial day), note.
-
-### 5.2 Clients
+### 5.2 Clients (your fields)
 
 **`clients`**
 
 | Column | Type | Notes |
 |---|---|---|
-| name | text | |
-| lifecycle_stage | enum: `PROSPECT`, `IMPLEMENTATION`, `SERVICE` | |
-| deal_type | enum: `NEW_LOGO`, `ADD_CONTROL` | |
-| service_model | enum: `HYBRID`, `TRADITIONAL`, `PM`, nullable | Can be left empty for prospects |
-| time_zone | text (IANA) | |
-| payroll_input_date | date | **[See Q2 for the exact meaning]** |
-| benefits_start_date | date, optional | |
-| fein_count | integer | |
-| payroll_complexity | integer 1–5 | **[See Q3]** |
-| complexity_factors | relation to capability tags | Requirements such as Multi-State or Union, matched against associate capabilities |
+| company_code | char(3), unique, uppercase | **Primary identifier** across the app. Coded before sending to Claude. **[Q1]** |
+| display_name | text, optional | Optional label, never sent to Claude **[Q1]** |
+| lifecycle_stage | `PROSPECT` / `IMPLEMENTATION` / `SERVICE` | |
+| implementation_type | `NEW_LOGO` / `ADD_CONTROL` | |
+| support_model | `HYBRID` / `TRADITIONAL` / `PM` | You choose; required before assigning |
 | employee_count | integer | |
-| expected_start_date | date, optional | Mostly for prospects |
-| prospect_likelihood | enum Low/Med/High, optional | |
-| notes | long text | |
-| parent_client_id | optional self-reference | Links an Add Control to its existing client/database |
+| first_input_date | date | Go-live / first payroll. The main assignment date. |
+| benefits_start_date | date, optional | |
+| time_zone | text (IANA) | |
+| control_count | integer ≥ 1 | Number of companies |
+| payroll_complexity | integer 1–5 | Scale descriptions editable in Settings **[Q3]** |
+| previous_vendor | enum, see Q2 | **[Q2]** |
+| notes | long text, optional | |
+
+Stored or computed alongside: `assigned_on` (date the team was assigned), `is_fast_start` (computed), `workload_weight` (computed and recalculated when inputs change).
+
+For prospects, fields can be filled in gradually. Everything above is required before a client moves to **Implementation**.
 
 **`client_stage_history`**: client, from_stage, to_stage, changed_at, note.
 
 ### 5.3 Assignments and recommendations
 
-**`assignments`**: client, associate, role (enum from Q4), status (`TENTATIVE` for prospect holds, `ACTIVE`, `ENDED`), start_date, end_date, source (`MANUAL` / `AI_ACCEPTED` / `AI_MODIFIED`), recommendation_id (optional).
+**`assignments`**: client, associate, seat (`HYBRID` / `PM` / `PAYROLL`), status (`TENTATIVE` / `ACTIVE` / `ENDED`), start_date, end_date, source (`MANUAL` / `AI_ACCEPTED` / `AI_MODIFIED`), recommendation_id.
 
-**`ai_recommendations`**
-
-| Column | Notes |
-|---|---|
-| client_id | |
-| input_snapshot (JSON) | Exactly what the model was given: client, candidates and computed facts |
-| output (JSON) | Ranked teams, scores, rationale, risks |
-| model, prompt_version | For audit |
-| outcome | `ACCEPTED`, `MODIFIED`, `REJECTED` |
-| override_reason | Optional short note when you pick differently. This becomes useful history later. |
-| tokens / cost | For your visibility |
+**`ai_recommendations`**: client, support model, **outgoing payload exactly as sent** (already coded), the alias map (kept separately on the server), output JSON, model, prompt version, outcome (`ACCEPTED` / `MODIFIED` / `REJECTED`), optional override reason, tokens and cost.
 
 ### 5.4 Cadence (1:1s)
 
-Your **only two inputs** are the **date** and the **notes**. The associate isn't a separate input: you start a note from that associate's Cadence page (or pick them from a list of directly managed associates only), so it is attached by context. **[See Q9 to confirm]**
+Two inputs: **date** and **notes**. The associate comes from the page you start on (or a quick pick from directly managed associates only), so it isn't a separate input. **[Q12]**
 
-**`cadence_entries`**: associate_id, occurred_on (date), notes (long text).
-
-**`cadence_insights`** (one per entry, AI-generated, regenerated if you edit the note):
-
-| Field | Shape |
-|---|---|
-| summary | 2–4 sentences |
-| action_items | list of `{text, owner: "me" or "associate", due_hint}` |
-| strengths | list of strings |
-| weak_points / growth areas | list of strings |
-| skills_demonstrated | list, mapped to capability tags where possible |
-| themes | short tags (e.g. "workload", "client communication", "confidence") |
-| sentiment / morale | `positive`, `neutral`, `concerned` + one-line reason |
-| follow_ups_from_prior | which earlier action items this note shows as done or still open |
-| model, prompt_version, generated_at | audit |
-
-**`action_items`** (shared by Cadence and Escalations): source_type, source_id, associate_id, text, owner, status (`OPEN` / `DONE` / `DROPPED`), due_date. These are created from the AI output and you can check them off. They are not part of the entry form. **[See Q10]**
-
-**`trend_reports`**: subject_type (`ASSOCIATE`, `ESCALATIONS`, `CLIENT`), subject_id, period_start, period_end, content (JSON + narrative), model, generated_at. Generated when you ask (for example "Analyze last 90 days" on an associate) and cached.
+- **`cadence_entries`**: associate_id, occurred_on, notes.
+- **`cadence_insights`** (one per entry, AI-generated, regenerated if you edit the note): summary, action items (`{text, owner: me | associate, due_hint}`), strengths, weak points, skills demonstrated (mapped to capability tags where possible), themes, morale (`positive` / `neutral` / `concerned` + reason), follow-through on earlier action items, model, prompt version.
+- **`action_items`** (shared with Escalations): source, associate, text, owner, status (`OPEN` / `DONE` / `DROPPED`), due date. **[Q13]**
+- **`trend_reports`**: subject (associate / escalations / client), period, content, model, generated_at. Generated when you ask and cached.
 
 ### 5.5 Escalations
 
-The same two inputs: **date** and **details** (free text).
+Two inputs: **date** and **details**.
 
-**`escalations`**: occurred_on (date), details (long text), status (`OPEN` / `RESOLVED`, default `OPEN`; one click to resolve, so it isn't an extra entry input). **[See Q11]**
+- **`escalations`**: occurred_on, details, status (`OPEN` / `RESOLVED`, one click, not an entry field). **[Q14]**
+- **`escalation_analyses`** (AI-extracted, editable, with a confirmed flag): summary, suggested client, suggested associates involved, category, severity (Low/Medium/High/Critical), fault party (Associate / Client / Internal process / Product or system / Third party / Shared / Undetermined), fault associate(s), fault rationale, root cause, preventable (yes/no/unclear), recommended actions (become action items), confirmed_at. **[Q15]**
 
-**`escalation_analyses`** (AI-extracted, editable, with a "confirmed" flag):
-
-| Field | Notes |
-|---|---|
-| summary | |
-| client_id (suggested) | Matched against your client list by name |
-| associate_ids (suggested) | Matched against your associate roster |
-| category | e.g. Payroll error, Tax, Benefits, Missed deadline, Communication, Data/Setup, System, Other **[See Q12]** |
-| severity | Low / Medium / High / Critical |
-| fault_party | Associate / Client / Internal process / Product or system / Third party / Shared / Undetermined |
-| fault_associate_ids | If associate-attributed |
-| fault_rationale | Why the model attributed fault this way |
-| root_cause | |
-| preventable | yes / no / unclear |
-| recommended_actions | Becomes `action_items` |
-| confirmed_at | Set when you review and accept (or edit) the alignment |
-
-Trend views (**Insights → Escalations**) combine exact SQL aggregates over the *confirmed* structured fields (counts by fault, category, severity, associate, client and month) with a model-written narrative ("Three of the last five High-severity escalations trace back to setup in the first 30 days of New Logo implementations...").
-
-Cross-feature link: when Rex generates a Cadence trend report for an associate, it also includes the escalations attributed to that associate, so 1:1 prep reflects both.
+Trend views use exact SQL counts over the *confirmed* fields (by fault, category, severity, associate, client, month, implementation type, fast start vs. normal) plus a narrative from Claude. An associate's Cadence trend report also covers escalations attributed to them.
 
 ### 5.6 System tables
 
-- **`settings`**: capacity weights, critical-window sizes, model name, recommendation count, and similar.
-- **`audit_log`**: who/what/when for creates, updates, stage changes and AI accept/override.
-- **`admin_user`**: a single row with password hash and optional TOTP secret.
+- **`settings`**: weights, windows, bands, holidays, model, prompt options.
+- **`secrets`**: the encrypted Claude API key (with key version and last 4 characters for display).
+- **`audit_log`**: creates, edits, stage changes, AI accept/override, settings changes, logins.
+- **`admin_user`**: password hash and TOTP secret (encrypted).
 
 ---
 
-## 6. AI recommendation engine (the core feature)
+## 6. AI recommendation engine
 
 ### 6.1 Flow
 
 ```
- You open an incoming client  ──►  "Recommend team"
+ Client in Implementation (or prospect) with support model set ──► "Recommend team"
         │
         ▼
- [1] Deterministic pre-processing (code, exact)
-     • Determine service model + roles needed
-     • Build candidate list: active associates (optionally pre-filter on hard requirements)
-     • For each candidate compute facts:
-         - current count load & weighted load vs. target
-         - time-zone offset from client + working-hours overlap
-         - PTO overlapping the client's critical windows (payroll input, benefits start)
-         - other clients' critical windows colliding with this client's (same weeks)
-         - capability match vs. client's complexity factors (with proficiency)
-         - experience with deal type (New Logo vs Add Control) and similar size/FEIN count
-         - for Add Control: who is/was on the parent client (continuity)
+ [1] Rules engine (code, exact; Section 4.5)
+     • Seats needed from support model
+     • For every active associate who can fill a seat:
+         PTO knock-outs / penalties, first input collisions,
+         projected load, capability fit, time-zone offset, experience
+     • Excluded candidates set aside with reasons
         │
         ▼
- [2] Model call (Claude, structured output)
-     • System prompt: your assignment philosophy + factor priorities (from Settings)
-     • Input: client profile + candidate fact sheets + capability notes
-     • Output (validated JSON): top N team options, each with
-         fit score (0–100), per-factor assessment, plain-English rationale,
-         risks/warnings (e.g., "PTO 3 days before first payroll"), confidence
+ [2] Privacy layer (Section 7): company codes and names → aliases
         │
         ▼
- [3] Review screen
-     • Side-by-side cards for each recommended team, factor chips, risk flags
-     • "Accept", "Swap associate" (then re-check facts live), or "Choose manually"
-     • Store outcome + optional override reason
+ [3] Claude (structured output)
+     • System prompt: your rules and priorities, in plain language
+     • Input: coded client profile + fact sheets for eligible candidates
+     • Output: top 3 complete teams (every seat filled), each with
+         fit score 0–100, per-factor notes, rationale, risks, confidence
+        │
+        ▼
+ [4] Aliases mapped back to real names on the server
+        │
+        ▼
+ [5] Review screen
+     • Team cards with factor chips and red/amber flags
+     • Each candidate's upcoming first input dates and PTO on a mini timeline
+     • Accept / Swap one seat (facts re-checked live) / Choose manually
+     • Outcome and optional override reason saved
 ```
 
-### 6.2 Why it's split this way
+### 6.2 Team-level reasoning
 
-- Language models are good at weighing trade-offs ("strong multi-FEIN expert but stretched; second choice is lighter but has PTO near go-live") and explaining them. They are unreliable at date arithmetic and summing loads over many records.
-- So Rex computes every number, and the model only sees clean facts. If the API is unavailable, you still get the fact sheet and a simple code-only ranking as a fallback.
+Seats are filled as a team, not one by one. For example, in the PM model Claude can weigh whether the two payroll associates' PTO and collision dates complement each other. Whether a teammate's coverage can soften a PTO knock-out in the PM model is **[Q5]**.
 
-### 6.3 Model usage details
+### 6.3 Model usage
 
-- **SDK:** official `@anthropic-ai/sdk`. Model `claude-opus-5-5`, adaptive thinking, structured output against a Zod/JSON schema so results always parse.
-- **Refusal fallback:** server-side model fallback is enabled so a rare refused request still returns an answer.
-- **Prompt caching:** the stable system prompt and associate roster are cached, which cuts cost and latency on repeat calls.
-- **Cost:** at your volume (one user, a handful of calls a day) API cost should be small, roughly a few cents to low tens of cents per recommendation or analysis. Rex shows the token cost of each call.
-- **Prompt versioning:** prompts live in versioned files in the repo, and each stored output records which version produced it.
-- **Data sent to the API:** only the fields needed. **[See Q14 on data sensitivity: we can send IDs and attributes instead of client names if required.]**
+- Official `@anthropic-ai/sdk`, model `claude-opus-5-5`, adaptive thinking, structured output validated against a schema.
+- **API key** from Settings (decrypted on the server only for the call). A **"Test connection"** button checks it.
+- Server-side model fallback is enabled so a rare refused request still returns an answer.
+- The stable system prompt is cached to cut cost and latency on repeat calls.
+- **Cost:** small at your volume, roughly a few cents to low tens of cents per call, shown per call.
+- **If Claude is unavailable** (no key, outage), the rules-engine ranking is still shown, so you're never blocked.
 
 ### 6.4 Quality check
 
-Before you rely on it, we assemble about 10–20 past assignments where you know the right answer (or what you'd do now), run the recommender on them, and compare. This becomes a small regression test re-run whenever the prompt changes.
+You have no historical data, so together we'll write **10–15 realistic test scenarios** with the answer you'd expect. Examples: a fast start where the best-fit payroll associate has PTO 3 days before first input; two strong candidates where one has a first input collision; a PM-model team where one payroll associate is near 10. These run as an automated check whenever the prompt changes.
 
 ---
 
-## 7. Cadence and Escalation AI analysis
+## 7. Privacy layer (coding sensitive details)
 
-- **On save:** the entry is saved immediately. Analysis runs in the background and appears within seconds (a "Analyzing..." state, then the insights panel). If the API fails, the entry is safe and a "Retry analysis" button appears.
-- **Context given to the model:** for Cadence, the associate's previous few entries and their open action items, so it can track follow-through. For Escalations, the client and associate roster (names only) so it can match references, plus that client's prior escalations.
+**Where it happens:** in Rex's server code, **before** the request leaves your server. Claude can only protect data it never receives, so Claude itself doesn't do the hashing.
+
+| Data | What Claude receives |
+|---|---|
+| Company code (e.g. `ABC`) | Random alias per request, e.g. `CLIENT_07` |
+| Client display name | Never sent |
+| Associate names and emails | Aliases, e.g. `ASSOC_03` |
+| Employee count, control count, complexity, dates, time zones, implementation type, previous vendor | Sent as is (not identifying on their own) |
+| Associate capability notes | Sent after scrubbing (see below) |
+| **Escalation details** | Sent after scrubbing (see below) |
+| **1:1 notes** | **Sent as written**, per your instruction |
+
+**Scrubbing free text (escalations, capability notes):**
+
+1. **Dictionary replacement:** every known company code (uppercase, whole word only, so ordinary words aren't touched), client display name, and associate full, first and last name is replaced with its alias. The roster sent alongside uses the same aliases, so Claude can still say "this involves `CLIENT_07` and `ASSOC_03`", and Rex maps that back to the real client and associate.
+2. **Pattern scrubbing:** emails, phone numbers, SSN-like and FEIN/EIN-like numbers, and long account-like digit strings are replaced with `[REDACTED_EMAIL]` and similar tags.
+3. **Preview:** a "Show what will be sent" panel displays the exact coded text. You can have it appear before every escalation analysis or keep it as an on-demand view.
+
+**Limitation:** names Rex doesn't know (e.g., a client's HR contact) can't be caught by the dictionary. The pattern scrub and the preview cover most of this. You can also add a **"Other names to scrub"** list in Settings.
+
+**Storage:** the coded payload is stored as the audit record of what left the server. The alias map is stored separately and never sent.
+
+---
+
+## 8. Cadence and Escalation analysis
+
+- **On save:** the entry is saved immediately. Analysis runs in the background and appears within seconds. If the API fails, the entry is safe and "Retry analysis" appears.
+- **Context:** for Cadence, the associate's previous few entries and open action items, to track follow-through. For Escalations, the coded client/associate roster (to match references) and that client's prior escalations.
 - **Trend reports** (on demand, cached):
-  - *Associate:* recurring themes, skill growth, persistent weak points, action-item follow-through rate, morale trajectory, related escalations, suggested talking points for the next 1:1.
-  - *Escalations:* patterns by fault, category, client, associate, lifecycle phase and deal type, plus suggested process fixes.
-- **Editing:** every extracted field is editable. Your edits are kept and not overwritten by later re-analysis. Fields you changed are marked as confirmed by you.
+  - *Associate:* recurring themes, skill growth, persistent weak points, action-item follow-through, morale trajectory, related escalations, and talking points for the next 1:1.
+  - *Escalations:* patterns by fault, category, client, associate, implementation type, and fast start vs. normal start, plus suggested process fixes.
+- **Editing:** every extracted field is editable. Your edits are never overwritten by re-analysis.
 
 ---
 
-## 8. Pages
+## 9. Pages
 
 | Page | Contents |
 |---|---|
-| **Dashboard** | Clients awaiting assignment, capacity heatmap by associate, upcoming critical windows (next 30 days), upcoming PTO, open escalations, open action items, next 1:1s due (overdue cadence flag) |
-| **Clients** | Table plus Kanban by lifecycle stage. Filters: stage, deal type, service model, associate. Client detail: profile, team, stage history, escalations. |
-| **Assign** | Queue of unassigned and tentatively held clients. "Recommend team" flow (Section 6). |
-| **Associates** | Roster with load bars. Detail tabs: Profile & Capabilities, Clients (current/past), PTO, Cadence (if directly managed), Escalations, Trends. |
-| **Cadence** | Directly managed associates with last meeting date and days since. New entry (date + notes). Insight panels. Trend report. |
-| **Escalations** | List with severity/fault/status chips. New entry (date + details). Review-and-confirm panel for AI fields. |
-| **Insights** | Charts: capacity over time, escalations by fault/category/month, implementation durations, AI acceptance rate. |
-| **Settings** | Capability list, capacity weights, critical-window sizes, roles per service model, AI model choice, password/2FA, data export, backups. |
+| **Dashboard** | Clients awaiting assignment (fast starts on top), capacity bars by associate, **first input timeline** for the next 60 days with collisions highlighted, upcoming PTO with conflict flags, open escalations, open action items, overdue 1:1s |
+| **Clients** | Table plus Kanban by lifecycle stage, searchable by company code. Filters: stage, implementation type, support model, associate, fast start. Detail: profile, weight breakdown, team, stage history, escalations. |
+| **Assign** | Queue of clients without a full team. "Recommend team" flow (Section 6). |
+| **Associates** | Roster with load bars and next first input dates. Detail tabs: Profile & Capabilities, Clients, PTO, Cadence (if directly managed), Escalations, Trends. |
+| **Cadence** | Directly managed associates with last meeting and days since. New entry (date + notes). Insights and trend reports. |
+| **Escalations** | List with severity, fault and status chips. New entry (date + details). Review-and-confirm panel. |
+| **Insights** | Capacity over time, first input density by week, fast start rate, escalations by fault/category/month, implementation durations, AI acceptance rate. |
+| **Settings** | AI (API key, model, test connection, scrub list, preview behavior), assignment rules (weights, windows, bands, priority order), holidays, capabilities, complexity scale, password and 2FA, backups and data export. |
 
-Global: a command palette (Ctrl+K) to jump to any client or associate, and CSV import/export for clients and associates.
-
----
-
-## 9. Security and deployment
-
-- **Single admin login:** username and argon2id password hash set at first run (or from environment variables). Secure, httpOnly, SameSite=strict session cookie with expiry. Rate limiting and lockout on failed logins. Optional TOTP 2FA (authenticator app). **[See Q15]**
-- **Every route is protected,** with no public pages except the login screen. `robots.txt` blocks indexing.
-- **HTTPS** is handled automatically by Caddy (Let's Encrypt) on your domain. Optional IP allowlist or VPN-only access.
-- **Secrets** (API key, session secret) live in environment variables on the server, never in the repo.
-- **Backups:** nightly SQLite snapshot, compressed and encrypted, 30-day retention, with an optional copy off the server. A one-click "Download backup" in Settings.
-- **Deploying:** `docker compose up -d` on the server. Updates are `git pull` and rebuild. A GitHub Actions workflow runs lint, type-check and tests on every push.
+Global: a command palette (Ctrl+K) to jump to any company code or associate.
 
 ---
 
-## 10. Phased delivery
+## 10. Security and deployment
 
-Each phase ends with something you can use, and you review it before the next phase starts.
+Because Rex is reachable from anywhere (D8), the login carries all the protection:
+
+- **Single admin login**, argon2id password hash, set at first run.
+- **TOTP 2FA on by default** (any authenticator app), with one-time recovery codes. **[Q17]**
+- Rate limiting plus progressive lockout on failed logins, and every login attempt logged.
+- Secure, httpOnly, SameSite=strict session cookie with idle and absolute expiry.
+- No public pages except the login screen. `robots.txt` and headers block indexing. Security headers (HSTS, CSP, frame-deny).
+- **HTTPS** automatically through Caddy and Let's Encrypt. This needs a domain name pointed at the server. **[Q16]**
+- The **Claude API key** is entered in Settings, encrypted with AES-256-GCM using a master key that exists only in the server's environment, shown as `••••abcd`, and never logged or sent to the browser.
+- **Backups:** nightly encrypted SQLite snapshot, 30-day retention, optional off-server copy, and "Download backup" in Settings.
+- **Deploy:** `docker compose up -d`. Update with `git pull` and a rebuild. GitHub Actions runs lint, type-check and tests on every push.
+
+---
+
+## 11. Phased delivery
+
+You review each phase before the next starts.
 
 | Phase | Scope | You can... | Size |
 |---|---|---|---|
-| **0. Foundation** | Repo setup, design tokens, glass components, sidebar layout, crown logo, login/session, database + migrations, CI, Docker | Log in and see the empty, styled app | M |
-| **1. Associates** | CRUD, capability tags + proficiency, capability notes, PTO, directly-managed flag, CSV import | Load your roster | M |
-| **2. Clients & lifecycle** | Client CRUD with all assignment factors, lifecycle stages + history, prospects pipeline, Kanban, Add Control parent link | Load your book of business and pipeline | M |
-| **3. Assignments & capacity** | Manual assignment with roles per service model, capacity calculation (count + weighted), critical windows, collision detection, capacity heatmap, auto-close on Service | Assign by hand with full capacity visibility | M |
-| **4. AI recommendations** | Fact-sheet builder, Claude integration, structured output, review/accept/override UI, recommendation history, code-only fallback, evaluation set | Get recommended teams for incoming clients | L |
-| **5. Cadence** | Two-input entry, background AI analysis, action items, associate trend reports | Log 1:1s and get insights | M |
-| **6. Escalations** | Two-input entry, AI extraction + roster matching, review/confirm, fault alignment, trend charts + narrative | Log escalations and see patterns | M |
+| **0. Foundation** | Repo, design tokens, glass components, sidebar, crown logo, login + 2FA, database, settings framework with encrypted secrets, CI, Docker | Log in and see the styled app | M |
+| **1. Associates** | CRUD, seat eligibility (PM/Payroll), capabilities + proficiency, capability notes, PTO, directly-managed flag | Enter your roster | M |
+| **2. Clients & lifecycle** | Your client fields, company code validation, lifecycle + history, prospect pipeline, Kanban, business-day calendar, fast start flag, workload weight | Enter your book of business and pipeline | M |
+| **3. Assignments & rules engine** | Seats per support model, manual assignment, capacity bands, PTO knock-outs, first input collisions, fact sheets, first input timeline, auto-close on Service | Assign by hand with every rule visible | M |
+| **4. AI recommendations** | Claude integration, privacy layer, team recommendations, review/accept/swap/override, history, test scenarios | Get recommended teams | L |
+| **5. Cadence** | Two-input entry, background analysis, action items, associate trend reports | Log 1:1s and get insights | M |
+| **6. Escalations** | Two-input entry, scrubbing + preview, extraction and roster matching, confirm, fault alignment, trends | Log escalations and see patterns | M |
 | **7. Dashboard & Insights** | Dashboard widgets, Insights charts, command palette | See everything at a glance | M |
-| **8. Hardening & go-live** | 2FA, backups, security review, deployment to your server, user guide | Use it in production | S |
+| **8. Go-live** | Security review, backups, deploy to your server, short user guide | Use it in production | S |
 
-Phases 5 and 6 share most of their machinery (two-input entry, background analysis, editable AI fields, trends), so the second is quicker to build.
+Phases 5 and 6 share most of their machinery, so the second is quicker to build.
 
-### Future features (structure is ready for them)
-
-Calendar sync for PTO (Outlook/Google ICS), reminders for overdue 1:1s and critical windows, email-in for escalations, "what if" capacity planning for the prospect pipeline, learning from your overrides (feeding past override reasons back into the recommender's guidance), weekly digest.
+**Later features the structure supports:** calendar import for PTO, reminders (overdue 1:1s, PTO conflicts created after assignment, approaching first inputs), "what if" planning for the prospect pipeline, using your past override reasons to refine recommendations, weekly digest.
 
 ---
 
-## 11. Testing strategy
+## 12. Testing strategy
 
-- **Unit tests** for capacity weights, critical-window and PTO overlap, time-zone overlap, lifecycle transitions and auto-closing assignments. This is where correctness matters most.
-- **Contract tests** for AI output: each prompt's response schema is validated, with recorded sample responses as fixtures (no live calls in CI).
-- **Recommender evaluation set** (Section 6.4) re-run on prompt changes.
-- **End-to-end tests** (Playwright) for login, add associate, add client, assign, log cadence, log escalation.
+- **Unit tests** for the rules engine: business days with holidays, fast start boundary (19 vs. 20 business days), PTO windows by seat, collision windows, workload weights, seat shares, lifecycle transitions.
+- **Privacy tests:** company codes, names and patterns are always scrubbed, ordinary words are untouched, and alias mapping round-trips correctly.
+- **AI contract tests** with recorded responses (no live calls in CI), plus the recommendation scenario suite (Section 6.4).
+- **End-to-end tests** (Playwright): login with 2FA, add associate, add client, assign, log 1:1, log escalation.
 
 ---
 
-## 12. Open questions for you
+## 13. Remaining open questions
 
 Each has a default I'll use if you'd rather not decide now.
 
-**Assignment factors**
+**Clients**
 
-- **Q1. Time zone matching.** Should the best match be the *same* time zone, or is anything within N hours fine? Do associates work fixed hours (e.g. 8–5 local)? *Default: prefer same zone, penalize per hour of difference, and flag more than 2 hours.*
-- **Q2. "Payroll input date".** What exactly is it: the client's first payroll processing date (go-live), the date payroll data is due, or something else? Is there one date per client or one per FEIN? *Default: one first-payroll/go-live date per client.*
-- **Q3. Payroll complexity.** How do you judge it today? Is a 1–5 rating good, or should Rex derive it from specific factors (multi-state, union, certified payroll, tipped, job costing, integrations, garnishments, multiple pay frequencies)? *Default: a 1–5 rating plus optional factor tags.*
-- **Q4. Service model roles.** What are the role names in Traditional (2) and PM (3), and what does each role do? Is the service model decided before assignment (by you, or by rules such as employee count), or should the recommender suggest it? *Default: you pick the service model; roles as in Section 4.2.*
-- **Q5. Capabilities.** Can you share your capability list (or a few examples)? Do proficiency levels (learning / proficient / expert) matter, or is a simple yes/no enough?
-- **Q6. Capacity.** Do you think in "number of accounts" or weighted workload? Is there a target or maximum per associate? Does load vary by role (e.g. the PM role is lighter per account)? *Default: show both, with weighted as in Section 4.3.*
-- **Q7. Prospects and capacity.** Do you want tentative holds on associates for likely prospects (shown as projected load)? *Default: yes, shown separately and never counted as actual load.*
-- **Q8. Factor priority.** If factors conflict, which matter most? Please rank: time zone, capacity, PTO near key dates, capability match, deal type experience, continuity (Add Control). *Default: capability ≈ capacity > PTO risk > time zone > deal experience > continuity.*
+- **Q1. Client identifier.** Is the 3-character company code the only identifier, or do you also want an optional display name (never sent to Claude)? Prospects may not have a code yet. *Default: optional display name. Code required before Implementation.*
+- **Q2. Previous vendor.** You wrote "in house or new". Is this a two-option field (In-house vs. New), and what does "New" mean: coming from another payroll vendor, or new to outsourced payroll? Should the vendor name (e.g., a competitor) also be recorded? *Default: two options, In-house / New, no vendor name.*
+- **Q3. Payroll complexity.** Is a 1–5 scale right? What would a 1 and a 5 look like? *Default: 1–5 with descriptions you can edit.*
+- **Q4. Add Control continuity.** For an Add Control, should Rex prefer associates who already work (or worked) on that client's existing companies? This needs an optional link to the existing client. *Default: no link.*
+
+**Assignment rules**
+
+- **Q5. PTO knock-out details.** The default window is 5 business days before through 2 after first input, for payroll and hybrid seats. For the PM seat, should the same PTO also be a knock-out, or only a heavy penalty? In the PM model, can the second payroll associate's coverage soften a knock-out? *Default: PM = heavy penalty only. No softening.*
+- **Q6. "Near each other".** How close do two first input dates have to be to count as a conflict? *Default: within 5 business days = conflict, 6–10 = close.*
+- **Q7. Seat weights and "main accounts".** Does "main account" mean every account an associate is on, or only accounts where they hold the main seat? Do the default shares (Traditional PM 40% / Payroll 60%; PM model 40% / 30% / 30%) look right? *Default: as stated.*
+- **Q8. Holidays.** Should business days exclude US federal holidays, a company holiday list, or both? *Default: US federal holidays, editable.*
+- **Q9. Time zone.** How much does it matter? Same zone preferred, or is any US zone fine? *Default: small penalty per hour, flag at 3+ hours.*
+- **Q10. Roles and capabilities.** Can every associate fill both PM and payroll seats, or are some PM-only or payroll-only? Can you share 5–10 capabilities that matter when choosing someone?
+- **Q11. Prospect holds.** Do you want tentative holds on associates for likely prospects (shown as projected load)? *Default: yes, shown separately.*
 
 **Cadence and Escalations**
 
-- **Q9. Associate selection.** Is it OK that the associate for a 1:1 comes from the page you start on (or a quick pick), rather than counting as a third input?
-- **Q10. Action items.** Should AI-extracted action items become a checklist you can tick off, or just appear as read-only text?
-- **Q11. Escalation status.** Do you want Open/Resolved tracking (one click, not an input field), or are escalations a historical log only?
-- **Q12. Escalation categories and fault.** Are the fault parties in Section 5.5 right for you? Any categories or severity definitions your org already uses?
-- **Q13. Cadence frequency.** Is there an expected cadence (weekly / biweekly / monthly) so Rex can flag overdue 1:1s? Same for all directly managed associates?
+- **Q12. Associate on 1:1s.** OK that the associate comes from the page you start on rather than being a third input? *Default: yes.*
+- **Q13. Action items.** A checklist you can tick off, or read-only text? *Default: checklist.*
+- **Q14. Escalation status.** Open/Resolved (one click), or a historical log only? *Default: Open/Resolved.*
+- **Q15. Categories and fault.** Are the fault parties in Section 5.5 right? Any categories or severity definitions your org already uses? Is there an expected 1:1 frequency (weekly, biweekly) so Rex can flag overdue meetings? *Default: as listed, biweekly.*
 
-**Data, AI and hosting**
+**Deployment and look**
 
-- **Q14. Data sensitivity.** Rex will send client attributes, 1:1 notes and escalation details to the AI provider's API. Does your company have policies on sending client or employee data to external AI services? If so, Rex can send codes instead of client and associate names and map them back locally. Is there an approved AI vendor or an existing API key?
-- **Q15. AI provider.** Are you happy with Anthropic Claude (my recommendation), or do you need a different provider for company reasons?
-- **Q16. Server.** What will Rex run on: a personal VPS (DigitalOcean, Linode, Hetzner), a cloud VM (AWS/Azure/GCP), or a company server? Do you have a domain name? Should access be limited to certain networks (home/office IP, VPN)?
-- **Q17. Second factor.** Do you want TOTP 2FA (authenticator app) on the admin login? *Default: yes, optional to turn on.*
-- **Q18. Existing data.** Do you have spreadsheets of associates, clients or past 1:1 notes and escalations to import? If you share the column headers, I'll build the importers to match.
-
-**Look and feel**
-
-- **Q19. Dark mode.** Light only (per your description), or also a dark theme? *Default: light only for v1.*
-- **Q20. Mobile.** Will you use Rex on your phone (e.g. logging a 1:1 right after a call), or desktop only? *Default: desktop first, phone usable.*
-- **Q21. Shade check.** Is `#2E1065` close to the dark purple you have in mind? A hex code or reference image of your preferred shade would help.
-- **Q22. Maintenance.** Will you be maintaining or modifying the code yourself, or is it purely for use? That affects how much I lean toward conventions versus simplicity.
+- **Q16. Domain.** Do you have a domain or subdomain for Rex (e.g. `rex.yourdomain.com`)? It's needed for automatic HTTPS. What OS is the server running? *Default: Ubuntu-style Linux with Docker.*
+- **Q17. 2FA.** OK to make authenticator-app 2FA required, given the site is open to the internet? *Default: required.*
+- **Q18. Look.** Light theme only? Is `#2E1065` close to the purple you have in mind? Will you use Rex on your phone? *Default: light only, `#2E1065`, desktop first.*
+- **Q19. Maintenance.** Will you change the code yourself, or only use the app? *Default: written for easy handover either way.*
 
 ---
 
-## 13. Next step
+## 14. Next step
 
-Once you've answered (even partially), I will:
-
-1. Update this plan into **v1.0** with your decisions locked in.
-2. Start **Phase 0** (foundation: login, layout, design system), and share screenshots for a look-and-feel review before building features on it.
+When you're happy with this version (open questions can stay on their defaults), I'll lock it as **v1.0** and start **Phase 0**: login with 2FA, sidebar layout, the design system, and the encrypted Settings for your API key. I'll share screenshots for a look-and-feel review before building features on it.
