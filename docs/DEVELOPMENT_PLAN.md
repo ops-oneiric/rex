@@ -1,7 +1,7 @@
-# Rex — Development Plan (Draft for Review)
+# Rex — Development Plan
 
-> Status: **Draft v0.2.** Your first round of answers is built in (see Section 0). The questions still open are in Section 13, each with the default I'll use if you'd rather not decide now.
-> Anything still marked **[Assumption]** is mine and needs your confirmation.
+> Status: **v1.0, approved.** All open questions use their defaults (Section 13), and 2FA is out of scope (D11).
+> **Phase 0 is complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
 
 ---
 
@@ -18,6 +18,9 @@
 | D7 | Privacy | Sensitive identifiers are **coded before anything is sent to Claude**. **1:1 notes are sent as written.** |
 | D8 | Hosting | Your own server. **No network restrictions**, so it is reachable from anywhere and the login has to be strong (Section 10). |
 | D9 | Data | **No existing data to import.** Client fields are the ones you listed (Section 5.2). |
+| D10 | Open questions | **All defaults in Section 13 adopted.** |
+| D11 | Login | **No two-factor authentication.** Strong password rules, account lockout and per-IP rate limiting protect the login instead (Section 10). |
+| D12 | Database layer | **Drizzle ORM** instead of Prisma (implementation choice): migrations run inside the app at startup, so the Docker image needs no extra CLI or engine binaries. |
 
 ---
 
@@ -47,12 +50,12 @@ Rex is a private, single-user web app for running your book of business:
 |---|---|---|
 | Framework | **Next.js (App Router) + TypeScript** | One codebase for UI and server logic. Type safety from the database up to the UI. |
 | Styling | **Tailwind CSS** with design tokens | Makes the glass/gradient look easy to keep consistent. |
-| Components | **shadcn/ui** (Radix primitives) | Accessible, and styled to Rex's look rather than a generic one. |
+| Components | Small in-house component set in the shadcn/ui style | Accessible, styled to Rex's look, no extra dependency. |
 | Icons | **Lucide** line icons, including `Crown` for the logo | No emojis anywhere. A lint rule fails the build if one appears. |
 | Charts | **Recharts** | Capacity timelines and escalation trends. |
-| Database | **SQLite** via **Prisma** | Single user, so this needs no setup and is easy to back up. It can move to PostgreSQL later. |
+| Database | **SQLite** via **Drizzle ORM** | Single user, so this needs no setup and is easy to back up. Migrations apply automatically at startup. |
 | AI | **Anthropic Claude API**, official TypeScript SDK, default model `claude-opus-5-5` (changeable in Settings) | Strong multi-factor reasoning. Structured outputs give guaranteed-valid JSON. |
-| Auth | Single admin, **argon2id** password hash, httpOnly session cookie, **TOTP 2FA** | Important now that the server is reachable from anywhere. |
+| Auth | Single admin, **argon2id** password hash, server-side sessions in an httpOnly cookie, lockout and rate limiting | No 2FA (D11), so the password rules and lockout carry the protection. |
 | Secrets | API key encrypted at rest (**AES-256-GCM**), master key in a server environment variable | The key is never stored in plain text or sent to the browser. |
 | Validation | **Zod** | One schema for forms, server actions and AI output. |
 | Testing | **Vitest** (unit), **Playwright** (end-to-end) | Rules engine tested heavily. AI calls mocked in tests. |
@@ -177,7 +180,7 @@ Each candidate gets a **fact sheet** listing these values. That fact sheet is wh
 
 ## 5. Database design
 
-Table and column sketches; final names will be in the Prisma schema. Every table has `id`, `created_at` and `updated_at`.
+Table and column sketches; final names are in the Drizzle schema (`src/lib/db/schema.ts`). Every table has `id`, `created_at` and `updated_at`.
 
 ### 5.1 Associates
 
@@ -256,7 +259,8 @@ Trend views use exact SQL counts over the *confirmed* fields (by fault, category
 - **`settings`**: weights, windows, bands, holidays, model, prompt options.
 - **`secrets`**: the encrypted Claude API key (with key version and last 4 characters for display).
 - **`audit_log`**: creates, edits, stage changes, AI accept/override, settings changes, logins.
-- **`admin_user`**: password hash and TOTP secret (encrypted).
+- **`admin_user`**: username, password hash, failed-attempt count and lockout time.
+- **`sessions`**: login sessions, stored as SHA-256 hashes of the browser's random token.
 
 ---
 
@@ -363,7 +367,7 @@ You have no historical data, so together we'll write **10–15 realistic test sc
 | **Cadence** | Directly managed associates with last meeting and days since. New entry (date + notes). Insights and trend reports. |
 | **Escalations** | List with severity, fault and status chips. New entry (date + details). Review-and-confirm panel. |
 | **Insights** | Capacity over time, first input density by week, fast start rate, escalations by fault/category/month, implementation durations, AI acceptance rate. |
-| **Settings** | AI (API key, model, test connection, scrub list, preview behavior), assignment rules (weights, windows, bands, priority order), holidays, capabilities, complexity scale, password and 2FA, backups and data export. |
+| **Settings** | AI (API key, model, test connection, scrub list, preview behavior), assignment rules (weights, windows, bands, priority order), holidays, capabilities, complexity scale, password, backups and data export. |
 
 Global: a command palette (Ctrl+K) to jump to any company code or associate.
 
@@ -373,10 +377,9 @@ Global: a command palette (Ctrl+K) to jump to any company code or associate.
 
 Because Rex is reachable from anywhere (D8), the login carries all the protection:
 
-- **Single admin login**, argon2id password hash, set at first run.
-- **TOTP 2FA on by default** (any authenticator app), with one-time recovery codes. **[Q17]**
-- Rate limiting plus progressive lockout on failed logins, and every login attempt logged.
-- Secure, httpOnly, SameSite=strict session cookie with idle and absolute expiry.
+- **Single admin login**, argon2id password hash. The account is created on the server with a command (no public setup page), and the password must be at least 12 characters.
+- **No 2FA** (D11). Instead: per-IP rate limiting (10 attempts per 15 minutes) plus account lockout after 5 failures (15 minutes, doubling up to 24 hours), and every login attempt is logged.
+- Secure, httpOnly, SameSite=lax session cookie. Sessions end after 12 hours idle or 7 days in total. Changing the password signs out other browsers.
 - No public pages except the login screen. `robots.txt` and headers block indexing. Security headers (HSTS, CSP, frame-deny).
 - **HTTPS** automatically through Caddy and Let's Encrypt. This needs a domain name pointed at the server. **[Q16]**
 - The **Claude API key** is entered in Settings, encrypted with AES-256-GCM using a master key that exists only in the server's environment, shown as `••••abcd`, and never logged or sent to the browser.
@@ -391,7 +394,7 @@ You review each phase before the next starts.
 
 | Phase | Scope | You can... | Size |
 |---|---|---|---|
-| **0. Foundation** | Repo, design tokens, glass components, sidebar, crown logo, login + 2FA, database, settings framework with encrypted secrets, CI, Docker | Log in and see the styled app | M |
+| **0. Foundation** (done) | Repo, design tokens, glass components, sidebar, crown logo, login with lockout, database, settings with encrypted API key, CI, Docker | Log in and see the styled app | M |
 | **1. Associates** | CRUD, seat eligibility (PM/Payroll), capabilities + proficiency, capability notes, PTO, directly-managed flag | Enter your roster | M |
 | **2. Clients & lifecycle** | Your client fields, company code validation, lifecycle + history, prospect pipeline, Kanban, business-day calendar, fast start flag, workload weight | Enter your book of business and pipeline | M |
 | **3. Assignments & rules engine** | Seats per support model, manual assignment, capacity bands, PTO knock-outs, first input collisions, fact sheets, first input timeline, auto-close on Service | Assign by hand with every rule visible | M |
@@ -412,13 +415,13 @@ Phases 5 and 6 share most of their machinery, so the second is quicker to build.
 - **Unit tests** for the rules engine: business days with holidays, fast start boundary (19 vs. 20 business days), PTO windows by seat, collision windows, workload weights, seat shares, lifecycle transitions.
 - **Privacy tests:** company codes, names and patterns are always scrubbed, ordinary words are untouched, and alias mapping round-trips correctly.
 - **AI contract tests** with recorded responses (no live calls in CI), plus the recommendation scenario suite (Section 6.4).
-- **End-to-end tests** (Playwright): login with 2FA, add associate, add client, assign, log 1:1, log escalation.
+- **End-to-end tests** (Playwright): login, add associate, add client, assign, log 1:1, log escalation.
 
 ---
 
-## 13. Remaining open questions
+## 13. Defaults adopted
 
-Each has a default I'll use if you'd rather not decide now.
+You approved the default for every question below (D10). They are kept here as a record, and any of them can be revisited.
 
 **Clients**
 
@@ -447,7 +450,7 @@ Each has a default I'll use if you'd rather not decide now.
 **Deployment and look**
 
 - **Q16. Domain.** Do you have a domain or subdomain for Rex (e.g. `rex.yourdomain.com`)? It's needed for automatic HTTPS. What OS is the server running? *Default: Ubuntu-style Linux with Docker.*
-- **Q17. 2FA.** OK to make authenticator-app 2FA required, given the site is open to the internet? *Default: required.*
+- **Q17. 2FA.** *Decided: no 2FA (D11).*
 - **Q18. Look.** Light theme only? Is `#2E1065` close to the purple you have in mind? Will you use Rex on your phone? *Default: light only, `#2E1065`, desktop first.*
 - **Q19. Maintenance.** Will you change the code yourself, or only use the app? *Default: written for easy handover either way.*
 
@@ -455,4 +458,4 @@ Each has a default I'll use if you'd rather not decide now.
 
 ## 14. Next step
 
-When you're happy with this version (open questions can stay on their defaults), I'll lock it as **v1.0** and start **Phase 0**: login with 2FA, sidebar layout, the design system, and the encrypted Settings for your API key. I'll share screenshots for a look-and-feel review before building features on it.
+Phase 0 is done. **Phase 1 (Associates)** is next: the roster, PM/payroll seat eligibility, capability tags with proficiency, capability notes, PTO, and the directly-managed flag.
