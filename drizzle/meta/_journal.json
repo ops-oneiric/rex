@@ -50,6 +50,13 @@
       "when": 1794360801220,
       "tag": "0006_ai_recommendations",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1794361485857,
+      "tag": "0007_cadence",
+      "breakpoints": true
     }
   ]
 }

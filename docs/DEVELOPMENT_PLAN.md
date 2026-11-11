@@ -1,7 +1,7 @@
 # Rex — Development Plan
 
 > Status: **v1.0, approved.** All open questions use their defaults (Section 13), and 2FA is out of scope (D11).
-> **Phases 0 to 4 are complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
+> **Phases 0 to 5 are complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
 
 ---
 
@@ -385,6 +385,16 @@ You have no historical data, so together we'll write **10–15 realistic test sc
 
 ## 8. Cadence and Escalation analysis
 
+*As built for Cadence in Phase 5:*
+- **Saving and analysis:** saving a 1:1 is instant. Claude's analysis (effort `medium`, prompt `insight-v1`) runs after the response and the page updates when it lands. An analysis interrupted by a restart shows "Retry" after 3 minutes.
+- **What Claude gets:** the notes as written (D7), plus the 3 earlier meetings, the open action items with their ids, and your capability names. Rex never names the associate in the request.
+- **Validation in code:** follow-ups are kept only for real open items. Skills map only to capability names that exist, and lists are trimmed.
+- **Action items** are a checklist: tick to finish, drop, edit, delete, or add your own. Re-analysis replaces only items you haven't touched.
+- **Follow-up suggestions** ("looks done") are offered with a one-click "Mark done". Nothing is closed automatically.
+- **Trend reports** cover 90 days (effort `high`, prompt `trend-v1`) and need at least two 1:1s. The follow-through rate is computed in code (done out of closed items), not by Claude.
+- **1:1 rhythm** is a setting (default every 14 days). The Cadence page shows On track, Due soon (the last 3 days), Overdue or No 1:1 yet, plus your own open items across everyone.
+- **Settings > Claude** usage now includes 1:1 analyses and trend reports.
+
 - **On save:** the entry is saved immediately. Analysis runs in the background and appears within seconds. If the API fails, the entry is safe and "Retry analysis" appears.
 - **Context:** for Cadence, the associate's previous few entries and open action items, to track follow-through. For Escalations, the coded client/associate roster (to match references) and that client's prior escalations.
 - **Trend reports** (on demand, cached):
@@ -437,7 +447,7 @@ You review each phase before the next starts.
 | **2. Clients & lifecycle** (done) | Your client fields, company code validation, lifecycle + history, prospect pipeline, board view, business-day calendar with holidays, fast start flag, workload weight with editable formula, complexity scale | Enter your book of business and pipeline | M |
 | **3. Assignments & rules engine** (done) | Seats per support model, manual assignment with ranked candidates, holds on prospects, capacity bands and load bars, PTO knock-outs with override, first input collisions, fact sheets, first input timeline, auto-close on Service, editable rule settings | Assign by hand with every rule visible | M |
 | **4. AI recommendations** (done) | Claude integration, privacy layer, team recommendations, review/accept/swap/decline, history, usage, test scenarios | Get recommended teams | L |
-| **5. Cadence** | Two-input entry, background analysis, action items, associate trend reports | Log 1:1s and get insights | M |
+| **5. Cadence** (done) | Two-input entry, background analysis, action items, follow-up suggestions, associate trend reports, 1:1 rhythm | Log 1:1s and get insights | M |
 | **6. Escalations** | Two-input entry, scrubbing + preview, extraction and roster matching, confirm, fault alignment, trends | Log escalations and see patterns | M |
 | **7. Dashboard & Insights** | Dashboard widgets, Insights charts, command palette | See everything at a glance | M |
 | **8. Go-live** | Security review, backups, deploy to your server, short user guide | Use it in production | S |
@@ -496,8 +506,8 @@ You approved the default for every question below (D10). They are kept here as a
 
 ## 14. Next step
 
-Phases 0 to 4 are done. **Phase 5 (Cadence)** is next:
-- two-input 1:1 entries (date and notes) for associates you manage directly;
-- background analysis by Claude: summary, action items, strengths, weak points, skills and morale;
-- an action-item checklist;
-- associate trend reports with talking points for the next 1:1.
+Phases 0 to 5 are done. **Phase 6 (Escalations)** is next:
+- two-input entry (date and details);
+- names and codes scrubbed before sending, with a preview;
+- Claude extracts the client, associates, category, severity, fault and root cause for you to confirm;
+- fault alignment, and trends by fault, category, associate and client.

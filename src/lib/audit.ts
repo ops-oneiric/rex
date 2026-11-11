@@ -36,7 +36,14 @@ export type AuditAction =
   | "assignment.ended"
   | "ai.recommendation_requested"
   | "ai.recommendation_decided"
-  | "settings.privacy_changed";
+  | "settings.privacy_changed"
+  | "settings.cadence_changed"
+  | "cadence.created"
+  | "cadence.updated"
+  | "cadence.deleted"
+  | "cadence.analyzed"
+  | "action_item.changed"
+  | "trend.generated";
 
 export function audit(action: AuditAction, detail: Record<string, unknown> | null = null, ip: string | null = null) {
   db.insert(schema.auditLog).values({ action, detail, ip }).run();

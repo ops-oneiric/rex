@@ -50,7 +50,7 @@ test("assign a team with rules, override a PTO knock-out, and end it at Service"
   const ranked = page.getByRole("list").filter({ has: page.getByRole("listitem", { name: "Riley PM" }) }).first();
   await expect(ranked.getByRole("listitem", { name: "Quinn Hybrid" })).toBeVisible();
   await page.getByText(/^Not eligible \(\d+\)$/).click();
-  await expect(page.getByText("Not eligible for PM seats")).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: "Pat Payroll" })).toContainText("Not eligible for PM seats");
   await page.getByRole("button", { name: "Assign Riley PM" }).click();
 
   // Moves on to the payroll seat: Pat is knocked out by PTO.

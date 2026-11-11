@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, ArrowLeft, CalendarCheck } from "lucide-react";
+import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { listEntries } from "@/lib/cadence/data";
+import { CadenceTab } from "./cadence-tab";
 import { ComingSoon } from "@/components/layout/coming-soon";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +44,7 @@ export default async function AssociatePage({ params, searchParams }: PageProps<
   const pto = listPto(associate.id);
   const upcomingPto = pto.filter((p) => p.endDate >= today);
   const base = `/associates/${associate.id}`;
+  const cadenceCount = listEntries(associate.id).length;
 
   return (
     <>
@@ -84,8 +87,9 @@ export default async function AssociatePage({ params, searchParams }: PageProps<
             href: `${base}?tab=clients`,
             count: associateAssignments(associate.id).filter((r) => r.a.status === "ACTIVE").length,
           },
-          ...(associate.isDirectlyManaged
-            ? [{ id: "cadence", label: "Cadence", href: `${base}?tab=cadence`, muted: true }]
+          // Cadence is for associates you manage directly (or who already have 1:1s on record).
+          ...(associate.isDirectlyManaged || cadenceCount > 0
+            ? [{ id: "cadence", label: "Cadence", href: `${base}?tab=cadence`, count: cadenceCount }]
             : []),
           { id: "escalations", label: "Escalations", href: `${base}?tab=escalations`, muted: true },
         ]}
@@ -182,14 +186,7 @@ export default async function AssociatePage({ params, searchParams }: PageProps<
       )}
 
       {tab === "clients" && <ClientsTab associateId={associate.id} targetLoad={associate.targetLoad} />}
-      {tab === "cadence" && (
-        <ComingSoon
-          phase={5}
-          icon={<CalendarCheck />}
-          title="1:1 notes"
-          points={["Meeting history with Claude's insights", "Open action items and trends"]}
-        />
-      )}
+      {tab === "cadence" && <CadenceTab associateId={associate.id} />}
       {tab === "escalations" && (
         <ComingSoon
           phase={6}

@@ -260,3 +260,73 @@ export const aiRecommendations = sqliteTable(
   },
   (t) => [index("ai_recommendations_client_idx").on(t.clientId, t.createdAt)],
 );
+
+/* ---------------------------------- Phase 5: Cadence (1:1s) -------------------------------- */
+
+/**
+ * A 1:1 meeting: two inputs only (date and notes). Claude's analysis is stored with the
+ * entry and replaced when the notes are edited.
+ */
+export const cadenceEntries = sqliteTable(
+  "cadence_entries",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    associateId: integer("associate_id")
+      .notNull()
+      .references(() => associates.id, { onDelete: "cascade" }),
+    occurredOn: text("occurred_on").notNull(),
+    notes: text("notes").notNull(),
+    analysisStatus: text("analysis_status", { enum: ["PENDING", "DONE", "FAILED", "NO_KEY"] }).notNull().default("PENDING"),
+    analysisError: text("analysis_error"),
+    insight: text("insight", { mode: "json" }),
+    insightModel: text("insight_model"),
+    insightPromptVersion: text("insight_prompt_version"),
+    insightCostUsd: real("insight_cost_usd"),
+    analyzedAt: integer("analyzed_at", { mode: "timestamp_ms" }),
+    ...timestamps,
+  },
+  (t) => [index("cadence_entries_associate_idx").on(t.associateId, t.occurredOn)],
+);
+
+/** Action items from 1:1s (and, in Phase 6, escalations). A checklist you can edit. */
+export const actionItems = sqliteTable(
+  "action_items",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    sourceType: text("source_type", { enum: ["CADENCE", "ESCALATION", "MANUAL"] }).notNull(),
+    sourceId: integer("source_id"),
+    associateId: integer("associate_id").references(() => associates.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    owner: text("owner", { enum: ["ME", "ASSOCIATE"] }).notNull(),
+    dueHint: text("due_hint"),
+    status: text("status", { enum: ["OPEN", "DONE", "DROPPED"] }).notNull().default("OPEN"),
+    /** Set once you edit an item, so re-analysis never overwrites it. */
+    userEdited: integer("user_edited", { mode: "boolean" }).notNull().default(false),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+    ...timestamps,
+  },
+  (t) => [
+    index("action_items_associate_idx").on(t.associateId, t.status),
+    index("action_items_source_idx").on(t.sourceType, t.sourceId),
+  ],
+);
+
+/** On-demand trend reports (associate 1:1 trends now; escalation trends in Phase 6). */
+export const trendReports = sqliteTable(
+  "trend_reports",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    subjectType: text("subject_type", { enum: ["ASSOCIATE", "ESCALATIONS", "CLIENT"] }).notNull(),
+    subjectId: integer("subject_id"),
+    periodStart: text("period_start").notNull(),
+    periodEnd: text("period_end").notNull(),
+    status: text("status", { enum: ["DONE", "FAILED"] }).notNull(),
+    error: text("error"),
+    content: text("content", { mode: "json" }),
+    model: text("model").notNull(),
+    promptVersion: text("prompt_version").notNull(),
+    costUsd: real("cost_usd"),
+    createdAt: timestamps.createdAt,
+  },
+  (t) => [index("trend_reports_subject_idx").on(t.subjectType, t.subjectId, t.createdAt)],
+);

@@ -2,13 +2,12 @@
  * Building the coded request, calling Claude and validating its answer. Free of database
  * access so it can be unit-tested and reused by the evaluation scenarios.
  */
-import Anthropic from "@anthropic-ai/sdk";
-import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
+import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import type { Evaluation, RuleClient } from "@/lib/assignments/rules";
 import { SEATS, type Seat } from "@/lib/assignments/seats";
 import { aliasFor, type AliasMap, type PrivacySubjects, scrubText } from "@/lib/privacy/alias";
-import { estimateCostUsd } from "../pricing";
+import { callStructured, type StructuredResult } from "../structured";
 import { PROMPT_VERSION, SYSTEM_PROMPT } from "./prompt";
 
 /* ----------------------------------------- Output ----------------------------------------- */
@@ -165,76 +164,20 @@ export function validateTeams(
 
 /* ------------------------------------------ Calling ------------------------------------------ */
 
-export type CallResult =
-  | {
-      ok: true;
-      output: RecommendationOutput;
-      servedModel: string;
-      usage: { input: number; output: number; cacheRead: number; cacheWrite: number };
-      costUsd: number;
-      durationMs: number;
-    }
-  | { ok: false; error: string; durationMs: number; costUsd?: number };
+export type CallResult = StructuredResult<RecommendationOutput>;
 
-/** Models with a server-side refusal fallback. Haiku has none and rejects the parameter. */
-const FALLBACK_MODELS = new Set(["claude-opus-5-5", "claude-fable-5-2", "claude-sonnet-5-5"]);
-
-export async function requestRecommendation(
+export function requestRecommendation(
   client: Anthropic,
   model: string,
   payload: ReturnType<typeof buildPayload>,
 ): Promise<CallResult> {
-  const started = Date.now();
-  const elapsed = () => Date.now() - started;
-  try {
-    const response = await client.beta.messages.parse({
-      model,
-      max_tokens: 16000,
-      ...(FALLBACK_MODELS.has(model)
-        ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }
-        : {}),
-      system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: userMessage(payload) }],
-      output_config: { effort: "high", format: betaZodOutputFormat(recommendationSchema) },
-    });
-    const usage = response.usage;
-    const costUsd = estimateCostUsd(response.model, usage);
-    if (response.stop_reason === "refusal") {
-      return { ok: false, error: "Claude declined to answer this request.", durationMs: elapsed(), costUsd };
-    }
-    if (response.stop_reason === "max_tokens") {
-      return { ok: false, error: "Claude's answer was cut off before it finished.", durationMs: elapsed(), costUsd };
-    }
-    if (!response.parsed_output) {
-      return { ok: false, error: "Claude's answer could not be read.", durationMs: elapsed(), costUsd };
-    }
-    return {
-      ok: true,
-      output: response.parsed_output,
-      servedModel: response.model,
-      usage: {
-        input: usage.input_tokens,
-        output: usage.output_tokens,
-        cacheRead: usage.cache_read_input_tokens ?? 0,
-        cacheWrite: usage.cache_creation_input_tokens ?? 0,
-      },
-      costUsd,
-      durationMs: elapsed(),
-    };
-  } catch (error) {
-    return { ok: false, error: describeApiError(error), durationMs: elapsed() };
-  }
-}
-
-export function describeApiError(error: unknown): string {
-  if (error instanceof Anthropic.AuthenticationError) return "The API key was rejected. Check it in Settings.";
-  if (error instanceof Anthropic.PermissionDeniedError) return "This API key does not have permission for this request.";
-  if (error instanceof Anthropic.NotFoundError) return "The chosen model is not available to this API key. Pick another in Settings.";
-  if (error instanceof Anthropic.RateLimitError) return "Rate limited by the API. Wait a minute and try again.";
-  if (error instanceof Anthropic.APIConnectionError) return "Could not reach the Claude API from this server.";
-  if (error instanceof Anthropic.BadRequestError) return `The API rejected the request: ${error.message}`;
-  if (error instanceof Anthropic.APIError) return `The API returned an error (status ${error.status ?? "unknown"}).`;
-  return "Unexpected error while asking Claude.";
+  return callStructured(client, {
+    model,
+    system: SYSTEM_PROMPT,
+    user: userMessage(payload),
+    schema: recommendationSchema,
+    effort: "high",
+  });
 }
 
 export { PROMPT_VERSION };

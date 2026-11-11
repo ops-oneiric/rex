@@ -18,6 +18,7 @@ import {
   removeApiKey,
   saveApiKey,
   setAiModel,
+  setCadenceDays,
   setComplexityScale,
   setExtraNames,
   setHomeTimeZone,
@@ -298,4 +299,14 @@ export async function savePrivacyAction(_prev: FormResult, formData: FormData): 
   setExtraNames([...new Set(names)]);
   audit("settings.privacy_changed", { extraNames: names.length }, await clientIp());
   return { ok: true, message: `Saved ${names.length} name${names.length === 1 ? "" : "s"} to scrub.` };
+}
+
+export async function saveCadenceDaysAction(_prev: FormResult, formData: FormData): Promise<FormResult> {
+  await requireAdmin();
+  const days = Number(String(formData.get("cadenceDays") ?? ""));
+  if (!Number.isInteger(days) || days < 1 || days > 90) return { ok: false, message: "Enter a whole number of days from 1 to 90." };
+  setCadenceDays(days);
+  audit("settings.cadence_changed", { days }, await clientIp());
+  revalidatePath("/cadence");
+  return { ok: true, message: "1:1 rhythm saved." };
 }

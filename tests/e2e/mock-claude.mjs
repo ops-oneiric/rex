@@ -43,6 +43,35 @@ function recommendation(userText) {
   };
 }
 
+function insight(userText) {
+  const ids = [...userText.matchAll(/\[id (\d+)\]/g)].map((m) => Number(m[1]));
+  return {
+    summary: "Solid week; go-live prep is on track and confidence is growing.",
+    action_items: [
+      { text: "Share the tax setup checklist", owner: "associate", due_hint: "Friday" },
+      { text: "Book a shadowing session on multi-state setup", owner: "me", due_hint: "" },
+    ],
+    strengths: ["Organized go-live preparation"],
+    weak_points: ["Waits too long to escalate blockers"],
+    skills: [{ skill: "Multi-state tax setup", capability: "Multi-State" }],
+    themes: ["go-live prep", "confidence"],
+    morale: { level: "positive", reason: "Upbeat about the new client." },
+    follow_ups: ids.slice(0, 1).map((id) => ({ item_id: id, status: "done", evidence: "Mentioned it was finished." })),
+  };
+}
+
+function trend() {
+  return {
+    overview: "Steady progress across recent 1:1s with growing confidence on go-lives.",
+    recurring_themes: [{ theme: "Go-live prep", detail: "Comes up in most meetings." }],
+    skill_growth: ["Multi-state tax setup"],
+    persistent_weak_points: ["Escalating blockers early"],
+    morale_trajectory: { direction: "improving", detail: "More upbeat in each meeting." },
+    follow_through: "Most agreed items get done on time.",
+    talking_points: ["Agree when to escalate a blocker", "Plan the next shadowing session", "Check workload before the holidays"],
+  };
+}
+
 http
   .createServer((req, res) => {
     let raw = "";
@@ -57,12 +86,18 @@ http
         lastBody = JSON.parse(raw);
         const user = lastBody.messages.find((m) => m.role === "user");
         const text = typeof user.content === "string" ? user.content : user.content.map((b) => b.text).join("");
+        const system = Array.isArray(lastBody.system) ? lastBody.system.map((b) => b.text).join("") : String(lastBody.system ?? "");
+        const answer = system.includes("see patterns across their 1:1 meetings")
+          ? trend()
+          : system.includes("get more out of their 1:1 meetings")
+            ? insight(text)
+            : recommendation(text);
         return reply(res, 200, {
           id: "msg_mock",
           type: "message",
           role: "assistant",
           model: lastBody.model,
-          content: [{ type: "text", text: JSON.stringify(recommendation(text)) }],
+          content: [{ type: "text", text: JSON.stringify(answer) }],
           stop_reason: "end_turn",
           stop_sequence: null,
           usage: { input_tokens: 1800, output_tokens: 400, cache_read_input_tokens: 0, cache_creation_input_tokens: 1500 },

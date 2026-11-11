@@ -1,4 +1,17 @@
-import { CalendarDays, Gauge, Globe, KeyRound, ListChecks, Scale, ShieldCheck, Sigma, Sparkles, Waypoints } from "lucide-react";
+import {
+  CalendarCheck,
+  CalendarDays,
+  Gauge,
+  Globe,
+  KeyRound,
+  ListChecks,
+  Scale,
+  ShieldCheck,
+  Sigma,
+  Sparkles,
+  Waypoints,
+} from "lucide-react";
+import { CadenceForm } from "./cadence-form";
 import { PageHeader } from "@/components/layout/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -12,6 +25,7 @@ import { listHolidays } from "@/lib/holidays";
 import {
   getAiModel,
   getApiKeyStatus,
+  getCadenceDays,
   getComplexityScale,
   getHomeTimeZone,
   getExtraNames,
@@ -19,7 +33,7 @@ import {
   getWeightSettings,
   today,
 } from "@/lib/settings";
-import { usageSince } from "@/lib/ai/recommend/service";
+import { aiUsageSince } from "@/lib/ai/usage";
 import { PrivacyForm } from "./privacy-form";
 import { otherTimeZones } from "@/lib/time-zones";
 import { ApiKeyForm, ModelForm } from "./ai-forms";
@@ -71,10 +85,16 @@ function GeneralTab() {
   const admin = getAdmin();
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <Card>
-        <CardHeader icon={<Globe />} title="Time zone" />
-        <TimeZoneForm current={getHomeTimeZone()} otherZones={otherTimeZones()} />
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader icon={<Globe />} title="Time zone" />
+          <TimeZoneForm current={getHomeTimeZone()} otherZones={otherTimeZones()} />
+        </Card>
+        <Card>
+          <CardHeader icon={<CalendarCheck />} title="1:1 rhythm" description="How often you expect to meet the associates you manage directly." />
+          <CadenceForm days={getCadenceDays()} />
+        </Card>
+      </div>
       <Card>
         <CardHeader
           icon={<KeyRound />}
@@ -119,7 +139,8 @@ function ClaudeTab() {
 
 function ClaudeSideCards() {
   const monthStart = new Date(`${today().slice(0, 7)}-01T00:00:00`);
-  const usage = usageSince(monthStart);
+  const all = aiUsageSince(monthStart);
+  const usage = all.recommendations;
   const decided = usage.accepted + usage.modified + usage.rejected;
   return (
     <div className="space-y-6">
@@ -135,9 +156,13 @@ function ClaudeSideCards() {
             {usage.calls}
             {usage.failed > 0 && <span className="text-ink-muted"> ({usage.failed} failed)</span>}
           </dd>
+          <dt className="text-ink-muted">1:1 analyses</dt>
+          <dd className="tabular">{all.insights}</dd>
+          <dt className="text-ink-muted">Trend reports</dt>
+          <dd className="tabular">{all.trends}</dd>
           <dt className="text-ink-muted">Estimated cost</dt>
-          <dd className="tabular">${usage.costUsd.toFixed(2)}</dd>
-          <dt className="text-ink-muted">Your decisions</dt>
+          <dd className="tabular">${all.totalCostUsd.toFixed(2)}</dd>
+          <dt className="text-ink-muted">Team decisions</dt>
           <dd className="tabular">
             {decided === 0
               ? "None yet"

@@ -123,3 +123,15 @@ export function getExtraNames(): string[] {
 export function setExtraNames(names: string[]) {
   setSetting(EXTRA_NAMES_SETTING, names);
 }
+
+const CADENCE_DAYS_SETTING = "cadence.frequencyDays";
+
+/** Expected days between 1:1s; a 1:1 is overdue after this. Default every two weeks. */
+export function getCadenceDays(): number {
+  const parsed = z.number().int().min(1).max(90).safeParse(getSetting(CADENCE_DAYS_SETTING));
+  return parsed.success ? parsed.data : 14;
+}
+
+export function setCadenceDays(days: number) {
+  setSetting(CADENCE_DAYS_SETTING, days);
+}
