@@ -19,6 +19,7 @@ import {
   saveApiKey,
   setAiModel,
   setComplexityScale,
+  setExtraNames,
   setHomeTimeZone,
   setRuleSettings,
   setWeightSettings,
@@ -283,4 +284,18 @@ export async function resetRulesAction(): Promise<FormResult> {
   audit("settings.rules_changed", { reset: true }, await clientIp());
   revalidatePath("/", "layout");
   return { ok: true, message: "Assignment rules reset to the defaults." };
+}
+
+export async function savePrivacyAction(_prev: FormResult, formData: FormData): Promise<FormResult> {
+  await requireAdmin();
+  const names = String(formData.get("extraNames") ?? "")
+    .split("\n")
+    .map((n) => n.trim())
+    .filter((n) => n.length >= 2);
+  if (names.length > 500 || names.some((n) => n.length > 100)) {
+    return { ok: false, message: "Use up to 500 names of 100 characters or fewer, one per line." };
+  }
+  setExtraNames([...new Set(names)]);
+  audit("settings.privacy_changed", { extraNames: names.length }, await clientIp());
+  return { ok: true, message: `Saved ${names.length} name${names.length === 1 ? "" : "s"} to scrub.` };
 }

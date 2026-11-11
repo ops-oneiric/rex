@@ -18,7 +18,7 @@ import { clientIp, userAgent } from "@/lib/request";
 export type LoginState = { error?: string; username?: string };
 
 const GENERIC_ERROR = "Incorrect username or password.";
-// At most 10 attempts per IP address every 15 minutes, on top of the account lockout.
+// At most 10 failed attempts per IP address every 15 minutes, on top of the account lockout.
 const ipLimiter = new RateLimiter(10, 15 * 60 * 1000);
 
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
@@ -31,7 +31,8 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     return { error: "Enter your username and password.", username };
   }
 
-  if (!ipLimiter.attempt(ip ?? "unknown")) {
+  const ipKey = ip ?? "unknown";
+  if (ipLimiter.isBlocked(ipKey)) {
     audit("login.rate_limited", null, ip);
     return { error: "Too many sign-in attempts. Wait 15 minutes and try again.", username };
   }
@@ -60,6 +61,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     : (await burnPasswordCheck(password), false);
 
   if (!passwordMatches) {
+    ipLimiter.recordFailure(ipKey);
     const failedAttempts = admin.failedAttempts + 1;
     const lockMs = lockoutDurationMs(failedAttempts);
     db.update(schema.adminUser)

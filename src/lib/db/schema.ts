@@ -214,10 +214,49 @@ export const assignments = sqliteTable(
     source: text("source", { enum: ["MANUAL", "AI_ACCEPTED", "AI_MODIFIED"] }).notNull().default("MANUAL"),
     /** Set when chosen despite a PTO knock-out, so the override is on record. */
     overrideNote: text("override_note"),
+    /** The Claude recommendation this assignment came from, if any. */
+    recommendationId: integer("recommendation_id").references(() => aiRecommendations.id, { onDelete: "set null" }),
     ...timestamps,
   },
   (t) => [
     uniqueIndex("assignments_active_seat_unique").on(t.clientId, t.seat).where(sql`${t.status} = 'ACTIVE'`),
     index("assignments_associate_idx").on(t.associateId, t.status),
   ],
+);
+
+/* ------------------------------- Phase 4: AI recommendations ------------------------------- */
+
+/**
+ * One request to Claude for a client's team. Stores exactly what was sent (already coded),
+ * the alias map that decodes it (never sent), Claude's coded answer, and what you decided.
+ */
+export const aiRecommendations = sqliteTable(
+  "ai_recommendations",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    clientId: integer("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "cascade" }),
+    status: text("status", { enum: ["COMPLETED", "FAILED"] }).notNull(),
+    error: text("error"),
+    model: text("model").notNull(),
+    servedModel: text("served_model"),
+    promptVersion: text("prompt_version").notNull(),
+    /** The user message exactly as sent (coded). The system prompt is identified by its version. */
+    requestPayload: text("request_payload").notNull(),
+    aliasMap: text("alias_map", { mode: "json" }).notNull(),
+    response: text("response", { mode: "json" }),
+    outcome: text("outcome", { enum: ["PENDING", "ACCEPTED", "MODIFIED", "REJECTED"] }).notNull().default("PENDING"),
+    outcomeReason: text("outcome_reason"),
+    chosenTeam: text("chosen_team", { mode: "json" }),
+    decidedAt: integer("decided_at", { mode: "timestamp_ms" }),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    cacheReadTokens: integer("cache_read_tokens"),
+    cacheWriteTokens: integer("cache_write_tokens"),
+    costUsd: real("cost_usd"),
+    durationMs: integer("duration_ms"),
+    createdAt: timestamps.createdAt,
+  },
+  (t) => [index("ai_recommendations_client_idx").on(t.clientId, t.createdAt)],
 );

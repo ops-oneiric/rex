@@ -50,7 +50,10 @@ export function safeRedirectPath(value: unknown, fallback = "/"): string {
   return value;
 }
 
-/** Fixed-window limiter, in memory. Rex runs as a single process, so this is enough. */
+/**
+ * Fixed-window counter of failed attempts, in memory. Rex runs as a single process, so this
+ * is enough. Only failures count, so signing in normally never locks you out.
+ */
 export class RateLimiter {
   private hits = new Map<string, { count: number; resetAt: number }>();
 
@@ -59,16 +62,21 @@ export class RateLimiter {
     private readonly windowMs: number,
   ) {}
 
-  /** Records an attempt. Returns false when the key is over its limit. */
-  attempt(key: string, now = Date.now()): boolean {
+  /** True when the key has used up its failures for the current window. */
+  isBlocked(key: string, now = Date.now()): boolean {
+    const entry = this.hits.get(key);
+    return !!entry && entry.resetAt > now && entry.count >= this.limit;
+  }
+
+  /** Records a failed attempt. */
+  recordFailure(key: string, now = Date.now()): void {
     const entry = this.hits.get(key);
     if (!entry || entry.resetAt <= now) {
       this.hits.set(key, { count: 1, resetAt: now + this.windowMs });
       this.prune(now);
-      return true;
+      return;
     }
     entry.count += 1;
-    return entry.count <= this.limit;
   }
 
   private prune(now: number) {

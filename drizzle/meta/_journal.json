@@ -43,6 +43,13 @@
       "when": 1794359533282,
       "tag": "0005_assignments",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1794360801220,
+      "tag": "0006_ai_recommendations",
+      "breakpoints": true
     }
   ]
 }

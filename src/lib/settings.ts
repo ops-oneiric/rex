@@ -16,6 +16,7 @@ const HOME_TIME_ZONE_SETTING = "app.timeZone";
 const WEIGHTS_SETTING = "rules.weights";
 const COMPLEXITY_SCALE_SETTING = "clients.complexityScale";
 const RULES_SETTING = "rules.assignment";
+const EXTRA_NAMES_SETTING = "privacy.extraNames";
 
 function getSetting<T>(key: string): T | undefined {
   const row = db.select().from(schema.settings).where(eq(schema.settings.key, key)).get();
@@ -111,4 +112,14 @@ export function getRuleSettings(): RuleSettings {
 
 export function setRuleSettings(rules: RuleSettings) {
   setSetting(RULES_SETTING, rules);
+}
+
+/** Extra names (e.g. client contacts) the privacy layer replaces with [NAME]. */
+export function getExtraNames(): string[] {
+  const parsed = z.array(z.string()).safeParse(getSetting(EXTRA_NAMES_SETTING));
+  return parsed.success ? parsed.data : [];
+}
+
+export function setExtraNames(names: string[]) {
+  setSetting(EXTRA_NAMES_SETTING, names);
 }

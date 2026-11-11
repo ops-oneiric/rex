@@ -1,7 +1,7 @@
 # Rex — Development Plan
 
 > Status: **v1.0, approved.** All open questions use their defaults (Section 13), and 2FA is out of scope (D11).
-> **Phases 0 to 3 are complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
+> **Phases 0 to 4 are complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
 
 ---
 
@@ -336,9 +336,18 @@ Seats are filled as a team, not one by one. For example, in the PM model Claude 
 - **Cost:** small at your volume, roughly a few cents to low tens of cents per call, shown per call.
 - **If Claude is unavailable** (no key, outage), the rules-engine ranking is still shown, so you're never blocked.
 
+### 6.3a As built in Phase 4
+
+- One request per client covers all open seats. Seats already filled are sent as fixed members.
+- Claude Opus 5.5 by default (changeable in Settings), effort `high`, structured output validated against a schema. Server-side refusal fallback (`fallbacks: "default"`) is on for every model except Haiku, which doesn't support it.
+- The system prompt is versioned (`recommend-v1`) and cached. Each stored recommendation records the prompt version, model, tokens, estimated cost and duration.
+- Every proposed team is re-checked in code: each open seat must be filled once by a distinct, eligible candidate. Teams that break the rules are set aside with a note. A recommendation can't be applied if the client's open seats have changed since it was made.
+- You can swap any seat before accepting. Accepting records ACCEPTED, or MODIFIED if you changed anything, with an optional reason. "None of these" records REJECTED with an optional reason. Assignments made from a recommendation carry its id.
+- Usage this month (calls, estimated cost, your decisions) is shown in Settings > Claude.
+
 ### 6.4 Quality check
 
-You have no historical data, so together we'll write **10–15 realistic test scenarios** with the answer you'd expect. Examples: a fast start where the best-fit payroll associate has PTO 3 days before first input; two strong candidates where one has a first input collision; a PM-model team where one payroll associate is near 10. These run as an automated check whenever the prompt changes.
+You have no historical data, so together we'll write **10–15 realistic test scenarios** with the answer you'd expect. *As built:* ten scenarios live in `tests/fixtures/scenarios.ts`. Unit tests check them against the rules engine without calling the API. Running `ANTHROPIC_API_KEY=... npm run eval` sends them to Claude and checks the answers; it costs a few cents per scenario, so it runs on demand rather than in CI. Examples: a fast start where the best-fit payroll associate has PTO 3 days before first input; two strong candidates where one has a first input collision; a PM-model team where one payroll associate is near 10. These run as an automated check whenever the prompt changes.
 
 ---
 
@@ -365,6 +374,12 @@ You have no historical data, so together we'll write **10–15 realistic test sc
 **Limitation:** names Rex doesn't know (e.g., a client's HR contact) can't be caught by the dictionary. The pattern scrub and the preview cover most of this. You can also add a **"Other names to scrub"** list in Settings.
 
 **Storage:** the coded payload is stored as the audit record of what left the server. The alias map is stored separately and never sent.
+
+*As built in Phase 4:*
+- Aliases are assigned in a random order for each request.
+- First and last names are replaced only when capitalized, so words like "will" or "may" survive. Full names and display names match regardless of case. Company codes match as uppercase whole words only.
+- The "Other names to scrub" list is in Settings > Claude.
+- The end-to-end tests record the exact request sent to a local stand-in for the API, and fail if any real name, code, contact or email appears in it.
 
 ---
 
@@ -421,7 +436,7 @@ You review each phase before the next starts.
 | **1. Associates** (done) | CRUD, seat eligibility (PM/Payroll), capabilities + proficiency, capability notes, PTO, directly-managed flag, capability list and home time zone in Settings | Enter your roster | M |
 | **2. Clients & lifecycle** (done) | Your client fields, company code validation, lifecycle + history, prospect pipeline, board view, business-day calendar with holidays, fast start flag, workload weight with editable formula, complexity scale | Enter your book of business and pipeline | M |
 | **3. Assignments & rules engine** (done) | Seats per support model, manual assignment with ranked candidates, holds on prospects, capacity bands and load bars, PTO knock-outs with override, first input collisions, fact sheets, first input timeline, auto-close on Service, editable rule settings | Assign by hand with every rule visible | M |
-| **4. AI recommendations** | Claude integration, privacy layer, team recommendations, review/accept/swap/override, history, test scenarios | Get recommended teams | L |
+| **4. AI recommendations** (done) | Claude integration, privacy layer, team recommendations, review/accept/swap/decline, history, usage, test scenarios | Get recommended teams | L |
 | **5. Cadence** | Two-input entry, background analysis, action items, associate trend reports | Log 1:1s and get insights | M |
 | **6. Escalations** | Two-input entry, scrubbing + preview, extraction and roster matching, confirm, fault alignment, trends | Log escalations and see patterns | M |
 | **7. Dashboard & Insights** | Dashboard widgets, Insights charts, command palette | See everything at a glance | M |
@@ -481,8 +496,8 @@ You approved the default for every question below (D10). They are kept here as a
 
 ## 14. Next step
 
-Phases 0 to 3 are done. **Phase 4 (AI recommendations)** is next:
-- the privacy layer (company codes and names replaced with aliases before anything leaves the server);
-- Claude reading the rules engine's fact sheets and recommending complete teams with reasons;
-- accept, swap or override, with the recommendation history kept;
-- the test scenarios for checking recommendation quality.
+Phases 0 to 4 are done. **Phase 5 (Cadence)** is next:
+- two-input 1:1 entries (date and notes) for associates you manage directly;
+- background analysis by Claude: summary, action items, strengths, weak points, skills and morale;
+- an action-item checklist;
+- associate trend reports with talking points for the next 1:1.

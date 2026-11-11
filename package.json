@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "db:generate": "drizzle-kit generate",
-    "admin": "node --env-file-if-exists=.env.local scripts/set-admin.mjs"
+    "admin": "node --env-file-if-exists=.env.local scripts/set-admin.mjs",
+    "eval": "vitest run --config vitest.eval.config.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.7.0",

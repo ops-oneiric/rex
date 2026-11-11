@@ -48,12 +48,15 @@ describe("safeRedirectPath", () => {
 });
 
 describe("RateLimiter", () => {
-  it("allows up to the limit within a window, then resets", () => {
+  it("blocks after the limit of failures within a window, then resets", () => {
     const limiter = new RateLimiter(3, 1000);
-    expect([1, 2, 3].map(() => limiter.attempt("ip", 0))).toEqual([true, true, true]);
-    expect(limiter.attempt("ip", 500)).toBe(false);
-    expect(limiter.attempt("other", 500)).toBe(true);
-    expect(limiter.attempt("ip", 1000)).toBe(true);
+    limiter.recordFailure("ip", 0);
+    limiter.recordFailure("ip", 100);
+    expect(limiter.isBlocked("ip", 200)).toBe(false);
+    limiter.recordFailure("ip", 300);
+    expect(limiter.isBlocked("ip", 500)).toBe(true);
+    expect(limiter.isBlocked("other", 500)).toBe(false);
+    expect(limiter.isBlocked("ip", 1000)).toBe(false);
   });
 });
 

@@ -1,4 +1,4 @@
-import { CalendarDays, Globe, KeyRound, ListChecks, Scale, Sigma, Sparkles, Waypoints } from "lucide-react";
+import { CalendarDays, Gauge, Globe, KeyRound, ListChecks, Scale, ShieldCheck, Sigma, Sparkles, Waypoints } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -14,10 +14,13 @@ import {
   getApiKeyStatus,
   getComplexityScale,
   getHomeTimeZone,
+  getExtraNames,
   getRuleSettings,
   getWeightSettings,
   today,
 } from "@/lib/settings";
+import { usageSince } from "@/lib/ai/recommend/service";
+import { PrivacyForm } from "./privacy-form";
 import { otherTimeZones } from "@/lib/time-zones";
 import { ApiKeyForm, ModelForm } from "./ai-forms";
 import { CapabilityManager } from "./capability-manager";
@@ -52,7 +55,12 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
         items={TABS.map((t) => ({ id: t.id, label: t.label, href: t.id === "general" ? "/settings" : `/settings?tab=${t.id}` }))}
       />
       {tab === "general" && <GeneralTab />}
-      {tab === "claude" && <ClaudeTab />}
+      {tab === "claude" && (
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <ClaudeTab />
+          <ClaudeSideCards />
+        </div>
+      )}
       {tab === "capabilities" && <CapabilitiesTab />}
       {tab === "rules" && <RulesTab />}
     </>
@@ -106,6 +114,38 @@ function ClaudeTab() {
       <div className="my-6 border-t border-rex-900/8" />
       <ModelForm current={getAiModel()} models={MODELS.map((m) => ({ id: m.id, label: m.label, note: m.note }))} />
     </Card>
+  );
+}
+
+function ClaudeSideCards() {
+  const monthStart = new Date(`${today().slice(0, 7)}-01T00:00:00`);
+  const usage = usageSince(monthStart);
+  const decided = usage.accepted + usage.modified + usage.rejected;
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader icon={<ShieldCheck />} title="Privacy" description="What is replaced before anything is sent to Claude." />
+        <PrivacyForm names={getExtraNames()} />
+      </Card>
+      <Card>
+        <CardHeader icon={<Gauge />} title="Usage this month" description="Estimated from token counts at list prices." />
+        <dl className="grid grid-cols-[10rem_1fr] gap-x-4 gap-y-2 text-sm">
+          <dt className="text-ink-muted">Recommendations</dt>
+          <dd className="tabular">
+            {usage.calls}
+            {usage.failed > 0 && <span className="text-ink-muted"> ({usage.failed} failed)</span>}
+          </dd>
+          <dt className="text-ink-muted">Estimated cost</dt>
+          <dd className="tabular">${usage.costUsd.toFixed(2)}</dd>
+          <dt className="text-ink-muted">Your decisions</dt>
+          <dd className="tabular">
+            {decided === 0
+              ? "None yet"
+              : `${usage.accepted} accepted, ${usage.modified} with changes, ${usage.rejected} declined`}
+          </dd>
+        </dl>
+      </Card>
+    </div>
   );
 }
 

@@ -33,7 +33,10 @@ export type AuditAction =
   | "settings.complexity_changed"
   | "settings.rules_changed"
   | "assignment.created"
-  | "assignment.ended";
+  | "assignment.ended"
+  | "ai.recommendation_requested"
+  | "ai.recommendation_decided"
+  | "settings.privacy_changed";
 
 export function audit(action: AuditAction, detail: Record<string, unknown> | null = null, ip: string | null = null) {
   db.insert(schema.auditLog).values({ action, detail, ip }).run();
