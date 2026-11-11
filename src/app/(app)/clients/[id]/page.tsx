@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, ArrowLeft, CalendarClock, History, Scale } from "lucide-react";
-import { ComingSoon } from "@/components/layout/coming-soon";
+import { ArrowLeft, CalendarClock, History, Scale } from "lucide-react";
+import { RelatedEscalations } from "@/components/escalations/related-escalations";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -165,6 +165,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
           </Card>
 
           <TeamCard client={c} />
+          <RelatedEscalations clientId={c.id} />
         </div>
 
         <div className="space-y-6">
@@ -202,8 +203,6 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
               ))}
             </ol>
           </Card>
-
-          <ComingSoon className="max-w-none" phase={6} icon={<AlertTriangle />} title="Escalations" points={["Escalations for this client"]} />
         </div>
       </div>
     </>

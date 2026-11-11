@@ -72,6 +72,39 @@ function trend() {
   };
 }
 
+function escalation(userText) {
+  // Only the escalation description (before the context sections) names who was involved.
+  const description = userText.split("## Clients mentioned")[0];
+  const client = description.match(/\bCLIENT_\d{2,}\b/)?.[0] ?? null;
+  const people = [...new Set(description.match(/\bASSOC_\d{2,}\b/g) ?? [])];
+  return {
+    summary: `${client ?? "The client"} received a short first payroll for several employees.`,
+    client,
+    associates_involved: people,
+    category: "PAYROLL_ERROR",
+    severity: "HIGH",
+    fault_party: people.length ? "ASSOCIATE" : "UNDETERMINED",
+    fault_associates: people.slice(0, 1),
+    fault_rationale: people.length ? `${people[0]} keyed the old rate table.` : "Not clear from the description.",
+    root_cause: "No second check on rate tables before the first payroll.",
+    preventable: "YES",
+    recommended_actions: [
+      { text: "Add a rate table check to the go-live checklist", owner: "me" },
+      { text: "Walk through the corrected rates with the client", owner: "associate" },
+    ],
+    cautions: [],
+  };
+}
+
+function escalationTrend() {
+  return {
+    overview: "Most escalations in the period are payroll errors during first payrolls.",
+    patterns: [{ pattern: "First-payroll errors", detail: "Clustered in the first two weeks after go-live." }],
+    process_fixes: ["Add a rate table check before every first payroll", "Pair new associates on their first two go-lives"],
+    watch_list: [],
+  };
+}
+
 http
   .createServer((req, res) => {
     let raw = "";
@@ -87,11 +120,15 @@ http
         const user = lastBody.messages.find((m) => m.role === "user");
         const text = typeof user.content === "string" ? user.content : user.content.map((b) => b.text).join("");
         const system = Array.isArray(lastBody.system) ? lastBody.system.map((b) => b.text).join("") : String(lastBody.system ?? "");
-        const answer = system.includes("see patterns across their 1:1 meetings")
-          ? trend()
-          : system.includes("get more out of their 1:1 meetings")
-            ? insight(text)
-            : recommendation(text);
+        const answer = system.includes("find patterns in client escalations")
+          ? escalationTrend()
+          : system.includes("review client escalations")
+            ? escalation(text)
+            : system.includes("see patterns across their 1:1 meetings")
+              ? trend()
+              : system.includes("get more out of their 1:1 meetings")
+                ? insight(text)
+                : recommendation(text);
         return reply(res, 200, {
           id: "msg_mock",
           type: "message",

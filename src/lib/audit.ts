@@ -43,7 +43,13 @@ export type AuditAction =
   | "cadence.deleted"
   | "cadence.analyzed"
   | "action_item.changed"
-  | "trend.generated";
+  | "trend.generated"
+  | "escalation.created"
+  | "escalation.updated"
+  | "escalation.analyzed"
+  | "escalation.confirmed"
+  | "escalation.status_changed"
+  | "escalation.deleted";
 
 export function audit(action: AuditAction, detail: Record<string, unknown> | null = null, ip: string | null = null) {
   db.insert(schema.auditLog).values({ action, detail, ip }).run();

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { listEntries } from "@/lib/cadence/data";
 import { CadenceTab } from "./cadence-tab";
-import { ComingSoon } from "@/components/layout/coming-soon";
+import { RelatedEscalations } from "@/components/escalations/related-escalations";
+import { escalationsForAssociate } from "@/lib/escalations/data";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -91,7 +92,7 @@ export default async function AssociatePage({ params, searchParams }: PageProps<
           ...(associate.isDirectlyManaged || cadenceCount > 0
             ? [{ id: "cadence", label: "Cadence", href: `${base}?tab=cadence`, count: cadenceCount }]
             : []),
-          { id: "escalations", label: "Escalations", href: `${base}?tab=escalations`, muted: true },
+          { id: "escalations", label: "Escalations", href: `${base}?tab=escalations`, count: escalationsForAssociate(associate.id).length },
         ]}
       />
 
@@ -187,14 +188,7 @@ export default async function AssociatePage({ params, searchParams }: PageProps<
 
       {tab === "clients" && <ClientsTab associateId={associate.id} targetLoad={associate.targetLoad} />}
       {tab === "cadence" && <CadenceTab associateId={associate.id} />}
-      {tab === "escalations" && (
-        <ComingSoon
-          phase={6}
-          icon={<AlertTriangle />}
-          title="Escalations"
-          points={["Escalations involving this associate", "Fault alignment and trends"]}
-        />
-      )}
+      {tab === "escalations" && <RelatedEscalations associateId={associate.id} />}
     </>
   );
 }

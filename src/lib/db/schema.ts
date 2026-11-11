@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { ESCALATION_CATEGORIES, FAULT_PARTIES, PREVENTABLE, SEVERITIES } from "../escalations/constants";
 
 const timestamps = {
   createdAt: integer("created_at", { mode: "timestamp_ms" })
@@ -329,4 +330,65 @@ export const trendReports = sqliteTable(
     createdAt: timestamps.createdAt,
   },
   (t) => [index("trend_reports_subject_idx").on(t.subjectType, t.subjectId, t.createdAt)],
+);
+
+/* -------------------------------- Phase 6: Escalations -------------------------------- */
+
+/**
+ * An escalation: two inputs only (date and details). Claude's suggestions are kept in
+ * `suggestion`; the columns below hold what you confirmed, and only confirmed values feed trends.
+ */
+export const escalations = sqliteTable(
+  "escalations",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    occurredOn: text("occurred_on").notNull(),
+    details: text("details").notNull(),
+    status: text("status", { enum: ["OPEN", "RESOLVED"] }).notNull().default("OPEN"),
+    resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
+
+    // Confirmed fields (yours).
+    clientId: integer("client_id").references(() => clients.id, { onDelete: "set null" }),
+    summary: text("summary"),
+    category: text("category", { enum: ESCALATION_CATEGORIES }),
+    severity: text("severity", { enum: SEVERITIES }),
+    faultParty: text("fault_party", { enum: FAULT_PARTIES }),
+    faultRationale: text("fault_rationale"),
+    rootCause: text("root_cause"),
+    preventable: text("preventable", { enum: PREVENTABLE }),
+    confirmedAt: integer("confirmed_at", { mode: "timestamp_ms" }),
+
+    // Claude's analysis.
+    analysisStatus: text("analysis_status", { enum: ["PENDING", "DONE", "FAILED", "NO_KEY"] }).notNull().default("PENDING"),
+    analysisError: text("analysis_error"),
+    /** Decoded suggestion (real ids), shown for review. */
+    suggestion: text("suggestion", { mode: "json" }),
+    /** The coded message exactly as sent, and the alias map that decodes it (never sent). */
+    requestPayload: text("request_payload"),
+    aliasMap: text("alias_map", { mode: "json" }),
+    aiModel: text("ai_model"),
+    promptVersion: text("prompt_version"),
+    costUsd: real("cost_usd"),
+    analyzedAt: integer("analyzed_at", { mode: "timestamp_ms" }),
+    ...timestamps,
+  },
+  (t) => [
+    index("escalations_occurred_idx").on(t.occurredOn),
+    index("escalations_client_idx").on(t.clientId),
+  ],
+);
+
+/** Associates involved in an escalation (confirmed), and whether fault is attributed to them. */
+export const escalationAssociates = sqliteTable(
+  "escalation_associates",
+  {
+    escalationId: integer("escalation_id")
+      .notNull()
+      .references(() => escalations.id, { onDelete: "cascade" }),
+    associateId: integer("associate_id")
+      .notNull()
+      .references(() => associates.id, { onDelete: "cascade" }),
+    atFault: integer("at_fault", { mode: "boolean" }).notNull().default(false),
+  },
+  (t) => [primaryKey({ columns: [t.escalationId, t.associateId] }), index("escalation_associates_associate_idx").on(t.associateId)],
 );

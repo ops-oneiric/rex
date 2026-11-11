@@ -20,6 +20,7 @@ import { addDays } from "@/lib/dates";
 import { today } from "@/lib/settings";
 import { allLoads, assignmentQueue, firstInputTimeline } from "@/lib/assignments/data";
 import { FirstInputTimeline } from "@/components/assign/first-input-timeline";
+import { countOpenEscalations } from "@/lib/escalations/data";
 import { LoadBar } from "@/components/assign/load-bar";
 import { Gauge } from "lucide-react";
 
@@ -42,7 +43,7 @@ export default async function DashboardPage() {
       value: implementations.filter((c) => c.firstInputDate && c.firstInputDate >= todayIso && c.firstInputDate <= in30).length,
       href: "/clients",
     },
-    { label: "Open escalations", icon: AlertTriangle, value: 0, href: null },
+    { label: "Open escalations", icon: AlertTriangle, value: countOpenEscalations(), href: "/escalations" },
   ];
 
   const checklist = [

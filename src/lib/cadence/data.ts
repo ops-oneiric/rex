@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, gte, inArray, lt, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, lt, lte } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { getAnthropicClient } from "@/lib/ai/client";
 import {
@@ -286,6 +286,7 @@ export async function generateTrend(associateId: number, days = 90): Promise<Tre
       morale: m.insight?.morale.level ?? null,
     })),
     stats: itemStats(items),
+    escalations: confirmedEscalationsFor(associateId, periodStart, periodEnd),
   });
   return db
     .insert(trendReports)
@@ -303,4 +304,28 @@ export async function generateTrend(associateId: number, days = 90): Promise<Tre
     })
     .returning()
     .get() as TrendReport;
+}
+
+/** Coded facts only (no free text), so 1:1 trends never carry client names to Claude. */
+function confirmedEscalationsFor(associateId: number, from: string, to: string) {
+  return db
+    .select({
+      occurredOn: schema.escalations.occurredOn,
+      category: schema.escalations.category,
+      severity: schema.escalations.severity,
+      atFault: schema.escalationAssociates.atFault,
+    })
+    .from(schema.escalationAssociates)
+    .innerJoin(schema.escalations, eq(schema.escalations.id, schema.escalationAssociates.escalationId))
+    .where(
+      and(
+        eq(schema.escalationAssociates.associateId, associateId),
+        isNotNull(schema.escalations.confirmedAt),
+        gte(schema.escalations.occurredOn, from),
+        lte(schema.escalations.occurredOn, to),
+      ),
+    )
+    .orderBy(asc(schema.escalations.occurredOn))
+    .all()
+    .map((e) => ({ occurredOn: e.occurredOn, category: e.category ?? "OTHER", severity: e.severity ?? "MEDIUM", atFault: e.atFault }));
 }

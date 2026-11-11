@@ -104,15 +104,15 @@ export async function requestInsight(client: Anthropic, model: string, ctx: Insi
 
 /* ------------------------------------------- Trends ------------------------------------------- */
 
-export const TREND_PROMPT_VERSION = "trend-v1";
+export const TREND_PROMPT_VERSION = "trend-v2";
 
-export const TREND_SYSTEM = `You help a manager see patterns across their 1:1 meetings with one payroll implementation associate. You receive every meeting in a period (the manager's notes plus a short summary and morale reading for each), and action item statistics calculated exactly in code.
+export const TREND_SYSTEM = `You help a manager see patterns across their 1:1 meetings with one payroll implementation associate. You receive every meeting in a period (the manager's notes plus a short summary and morale reading for each), action item statistics calculated exactly in code, and any confirmed escalations involving the associate in the period (category, severity and whether fault was confirmed as theirs).
 
 Return:
 - overview: 2 to 4 sentences on how this associate is doing over the period.
 - recurring_themes: topics that come up in more than one meeting, each with a short detail.
 - skill_growth: skills that are clearly developing, with evidence.
-- persistent_weak_points: growth areas that recur or have not improved.
+- persistent_weak_points: growth areas that recur or have not improved, including any pattern in escalations where fault was confirmed as theirs.
 - morale_trajectory: improving, steady, declining, mixed or unclear, with a short explanation.
 - follow_through: one or two sentences on how reliably action items get done, using the statistics as given.
 - talking_points: 3 to 5 specific, constructive things to raise at the next 1:1.
@@ -150,6 +150,7 @@ export type TrendContext = {
   periodEnd: string;
   meetings: { occurredOn: string; notes: string; summary: string | null; morale: string | null }[];
   stats: ItemStats;
+  escalations: { occurredOn: string; category: string; severity: string; atFault: boolean }[];
 };
 
 export function trendMessage(ctx: TrendContext): string {
@@ -165,6 +166,10 @@ export function trendMessage(ctx: TrendContext): string {
     meetings || "No meetings.",
     "## Action items from these meetings",
     `${s.total} total: ${s.done} done, ${s.open} open, ${s.dropped} dropped.${s.rate === null ? "" : ` ${s.rate}% of closed items were done.`}`,
+    "## Confirmed escalations involving this associate",
+    ctx.escalations.length
+      ? ctx.escalations.map((e) => `- ${e.occurredOn}: ${e.category}, ${e.severity}${e.atFault ? ", fault confirmed as theirs" : ", involved, not at fault"}`).join("\n")
+      : "None.",
   ].join("\n\n");
 }
 

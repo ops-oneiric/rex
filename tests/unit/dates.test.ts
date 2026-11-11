@@ -57,3 +57,15 @@ describe("formatDateRange", () => {
     expect(formatDateRange("2026-12-30", "2027-01-02")).toBe("Dec 30, 2026 – Jan 2, 2027");
   });
 });
+
+describe("fillMonths", () => {
+  it("fills empty months across a year boundary", async () => {
+    const { fillMonths } = await import("@/lib/months");
+    expect(fillMonths([{ month: "2026-12", count: 2 }], "2026-11-15", "2027-02-01")).toEqual([
+      { month: "2026-11", count: 0 },
+      { month: "2026-12", count: 2 },
+      { month: "2027-01", count: 0 },
+      { month: "2027-02", count: 0 },
+    ]);
+  });
+});

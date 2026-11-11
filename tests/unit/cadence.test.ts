@@ -118,11 +118,13 @@ describe("trends", () => {
         { occurredOn: "2026-11-10", notes: "n2", summary: null, morale: null },
       ],
       stats: { total: 4, done: 2, open: 1, dropped: 1, rate: 67 },
+      escalations: [{ occurredOn: "2026-11-01", category: "PAYROLL_ERROR", severity: "HIGH", atFault: true }],
     });
     expect(m).toContain("2 meetings");
     expect(m).toContain("### 2026-10-27 (morale: neutral)");
     expect(m).toContain("Summary: s1");
     expect(m).toContain("67% of closed items were done");
+    expect(m).toContain("- 2026-11-01: PAYROLL_ERROR, HIGH, fault confirmed as theirs");
   });
 });
 

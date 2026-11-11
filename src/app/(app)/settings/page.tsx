@@ -158,6 +158,8 @@ function ClaudeSideCards() {
           </dd>
           <dt className="text-ink-muted">1:1 analyses</dt>
           <dd className="tabular">{all.insights}</dd>
+          <dt className="text-ink-muted">Escalation reviews</dt>
+          <dd className="tabular">{all.escalations}</dd>
           <dt className="text-ink-muted">Trend reports</dt>
           <dd className="tabular">{all.trends}</dd>
           <dt className="text-ink-muted">Estimated cost</dt>

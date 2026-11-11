@@ -16,11 +16,17 @@ export function aiUsageSince(since: Date) {
     .from(schema.trendReports)
     .where(gte(schema.trendReports.createdAt, since))
     .all();
+  const escalationRows = db
+    .select({ cost: schema.escalations.costUsd })
+    .from(schema.escalations)
+    .where(and(isNotNull(schema.escalations.analyzedAt), gte(schema.escalations.analyzedAt, since)))
+    .all();
   const sum = (rows: { cost: number | null }[]) => rows.reduce((s, r) => s + (r.cost ?? 0), 0);
   return {
     recommendations,
     insights: insights.length,
+    escalations: escalationRows.length,
     trends: trends.length,
-    totalCostUsd: recommendations.costUsd + sum(insights) + sum(trends),
+    totalCostUsd: recommendations.costUsd + sum(insights) + sum(escalationRows) + sum(trends),
   };
 }

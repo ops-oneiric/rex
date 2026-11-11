@@ -1,7 +1,7 @@
 # Rex — Development Plan
 
 > Status: **v1.0, approved.** All open questions use their defaults (Section 13), and 2FA is out of scope (D11).
-> **Phases 0 to 5 are complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
+> **Phases 0 to 6 are complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
 
 ---
 
@@ -277,6 +277,12 @@ Two inputs: **date** and **details**.
 
 Trend views use exact SQL counts over the *confirmed* fields (by fault, category, severity, associate, client, month, implementation type, fast start vs. normal) plus a narrative from Claude. An associate's Cadence trend report also covers escalations attributed to them.
 
+As built in Phase 6:
+- Claude's suggestion and your confirmed values live on the one `escalations` row; a separate `escalation_analyses` table wasn't needed. The suggestion is stored as JSON, and the confirmed fields (client, summary, category, severity, fault party, fault rationale, root cause, preventable, `confirmed_at`) are real columns, so trends are plain SQL. People sit in `escalation_associates` (escalation, associate, at fault).
+- The coded request and the alias map are stored with each analysis, so the page can show exactly what Claude received.
+- Recommended actions become `action_items` (source `ESCALATION`) only for the ones you tick when you confirm.
+- Deleting an escalation also deletes its action items. Deleting a client or associate keeps the escalation but clears that link.
+
 ### 5.6 System tables
 
 - **`settings`**: weights, windows, bands, holidays, model, prompt options.
@@ -395,6 +401,17 @@ You have no historical data, so together we'll write **10–15 realistic test sc
 - **1:1 rhythm** is a setting (default every 14 days). The Cadence page shows On track, Due soon (the last 3 days), Overdue or No 1:1 yet, plus your own open items across everyone.
 - **Settings > Claude** usage now includes 1:1 analyses and trend reports.
 
+*As built for Escalations in Phase 6:*
+- **Two inputs:** a date (no later than tomorrow) and details. Saving is instant, and the review (effort `medium`, prompt `escalation-v1`) runs in the background. "Preview what will be sent" shows the coded text before you save.
+- **Coding (unlike 1:1 notes):** escalation details name clients and people, so they go through the privacy layer. Company codes, client names, associate names, extra names from Settings and capitalized first or last names become `CLIENT_xx`, `ASSOC_xx` or `[NAME]`. Emails, phone numbers, SSNs, EINs and long numbers are redacted. The request lists only the clients and associates mentioned, by code, with stage, support model, implementation type and their team's seats, so Claude can match references without knowing who anyone is.
+- **Claude proposes; you confirm.** The review form is prefilled with Claude's reading, decoded back to real names: client, summary, people involved and who was at fault, category, severity, fault party with its rationale, root cause, preventable, up to three actions, and cautions where the details are thin. Associates are marked at fault only when the fault party is Associate or Shared, and choosing Associate requires at least one at-fault associate. Nothing counts until you press Confirm; after that, re-analysis never overwrites your confirmed fields.
+- **Editing details** keeps your confirmed review and offers "Re-analyze". An analysis interrupted by a restart shows "Retry" after 3 minutes.
+- **Status** (Open or Resolved) is one click, apart from the review.
+- **Trends tab:** totals, awaiting review and preventable share, escalations per month, and counts by fault, category, severity, client and associates at fault, over 180 days of **confirmed** escalations only. Being involved isn't counted against anyone; only confirmed fault is.
+- **Claude's pattern reading** (effort `high`, prompt `escalation-trend-v1`) needs at least two confirmed escalations. It returns an overview, patterns, process fixes and a watch list, from coded rows that include stage and implementation type.
+- **Elsewhere:** client pages and the associate Escalations tab list related escalations. The dashboard's "Open escalations" tile is live. An associate's 1:1 trend report (prompt `trend-v2`) now includes their confirmed escalations: dates, categories, severity and whether fault was theirs, but not the details.
+- **Not built yet:** exact charts by implementation type and by fast start versus normal start (moved to Phase 7 Insights), and sending a client's earlier escalations as context for a new review.
+
 - **On save:** the entry is saved immediately. Analysis runs in the background and appears within seconds. If the API fails, the entry is safe and "Retry analysis" appears.
 - **Context:** for Cadence, the associate's previous few entries and open action items, to track follow-through. For Escalations, the coded client/associate roster (to match references) and that client's prior escalations.
 - **Trend reports** (on demand, cached):
@@ -448,7 +465,7 @@ You review each phase before the next starts.
 | **3. Assignments & rules engine** (done) | Seats per support model, manual assignment with ranked candidates, holds on prospects, capacity bands and load bars, PTO knock-outs with override, first input collisions, fact sheets, first input timeline, auto-close on Service, editable rule settings | Assign by hand with every rule visible | M |
 | **4. AI recommendations** (done) | Claude integration, privacy layer, team recommendations, review/accept/swap/decline, history, usage, test scenarios | Get recommended teams | L |
 | **5. Cadence** (done) | Two-input entry, background analysis, action items, follow-up suggestions, associate trend reports, 1:1 rhythm | Log 1:1s and get insights | M |
-| **6. Escalations** | Two-input entry, scrubbing + preview, extraction and roster matching, confirm, fault alignment, trends | Log escalations and see patterns | M |
+| **6. Escalations** (done) | Two-input entry, scrubbing + preview, extraction and roster matching, confirm, fault alignment, trends | Log escalations and see patterns | M |
 | **7. Dashboard & Insights** | Dashboard widgets, Insights charts, command palette | See everything at a glance | M |
 | **8. Go-live** | Security review, backups, deploy to your server, short user guide | Use it in production | S |
 
@@ -506,8 +523,7 @@ You approved the default for every question below (D10). They are kept here as a
 
 ## 14. Next step
 
-Phases 0 to 5 are done. **Phase 6 (Escalations)** is next:
-- two-input entry (date and details);
-- names and codes scrubbed before sending, with a preview;
-- Claude extracts the client, associates, category, severity, fault and root cause for you to confirm;
-- fault alignment, and trends by fault, category, associate and client.
+Phases 0 to 6 are done. **Phase 7 (Dashboard & Insights)** is next:
+- dashboard widgets: upcoming first inputs, PTO conflicts, capacity, overdue 1:1s, open action items and escalations needing review;
+- Insights charts: workload over time, fast starts, assignments by support model, and escalations by implementation type and by fast start versus normal start;
+- a command palette for jumping to any client, associate or page.
