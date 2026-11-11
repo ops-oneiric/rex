@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Search, X } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { logout } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
+import { openCommandPalette, useShortcutLabel } from "./command-palette";
 import { footerNav, mainNav, type NavItem } from "./nav";
 
 export const SIDEBAR_COOKIE = "rex_sidebar";
@@ -63,9 +64,37 @@ function SignOutButton({ collapsed }: { collapsed: boolean }) {
   );
 }
 
+function SearchButton({ collapsed, onOpen }: { collapsed: boolean; onOpen?: () => void }) {
+  const shortcut = useShortcutLabel();
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        onOpen?.();
+        openCommandPalette();
+      }}
+      title={collapsed ? `Search (${shortcut})` : undefined}
+      aria-keyshortcuts="Control+K Meta+K"
+      className={cn(
+        "mb-4 flex h-10 w-full items-center gap-3 rounded-xl bg-white/8 px-3 text-sm text-rex-200 ring-1 ring-white/10 transition-colors ring-inset hover:bg-white/12 hover:text-white",
+        collapsed && "justify-center px-0",
+      )}
+    >
+      <Search className="size-[18px] shrink-0" aria-hidden="true" />
+      <span className={cn("flex-1 text-left", collapsed && "sr-only")}>Search</span>
+      {!collapsed && (
+        <kbd className="rounded-md bg-white/10 px-1.5 py-0.5 font-sans text-[11px] text-rex-200" aria-hidden="true">
+          {shortcut}
+        </kbd>
+      )}
+    </button>
+  );
+}
+
 function NavSections({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   return (
     <>
+      <SearchButton collapsed={collapsed} onOpen={onNavigate} />
       <nav aria-label="Main" className="flex flex-1 flex-col gap-1">
         {mainNav.map((item) => (
           <NavLink key={item.href} item={item} collapsed={collapsed} onNavigate={onNavigate} />
@@ -138,15 +167,25 @@ export function Sidebar({ initialCollapsed }: { initialCollapsed: boolean }) {
         <Link href="/" aria-label="Rex home">
           <Logo tone="dark" size="sm" />
         </Link>
-        <button
-          type="button"
-          onClick={() => setMobileOpen(true)}
-          className="grid size-9 place-items-center rounded-lg text-white hover:bg-white/10"
-          aria-label="Open navigation"
-          aria-expanded={mobileOpen}
-        >
-          <Menu className="size-5" aria-hidden="true" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={openCommandPalette}
+            className="grid size-9 place-items-center rounded-lg text-white hover:bg-white/10"
+            aria-label="Search"
+          >
+            <Search className="size-5" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="grid size-9 place-items-center rounded-lg text-white hover:bg-white/10"
+            aria-label="Open navigation"
+            aria-expanded={mobileOpen}
+          >
+            <Menu className="size-5" aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       {/* Mobile drawer */}

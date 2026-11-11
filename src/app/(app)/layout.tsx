@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { CommandPalette } from "@/components/layout/command-palette";
 import { Sidebar, SIDEBAR_COOKIE } from "@/components/layout/sidebar";
 import { requireAdmin } from "@/lib/auth/dal";
 
@@ -12,6 +13,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
         <div className="mx-auto max-w-6xl">{children}</div>
       </main>
+      <CommandPalette />
     </div>
   );
 }

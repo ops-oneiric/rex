@@ -88,7 +88,7 @@ test("assign a team with rules, override a PTO knock-out, and end it at Service"
   // Dashboard: nothing awaiting assignment, capacity lists the team.
   await page.goto("/");
   await expect(page.getByRole("link", { name: /Awaiting assignment/ })).toContainText("0");
-  await expect(page.getByRole("link", { name: "Pat Payroll" })).toBeVisible();
+  await expect(page.locator(".glass", { has: page.getByRole("heading", { name: "Capacity", exact: true }) }).getByRole("link", { name: "Pat Payroll" })).toBeVisible();
 
   // Unassigning on the same day removes the seat holder.
   await page.goto("/clients");

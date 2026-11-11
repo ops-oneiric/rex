@@ -4,7 +4,7 @@ A private, single-admin web app for managing associates, assigning incoming clie
 
 The full plan, including decisions and phases, is in [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md).
 
-**Status:** Phases 0 to 6 are complete.
+**Status:** Phases 0 to 7 are complete.
 
 - **Phase 0, foundation:** login, layout, design system, encrypted Claude API key in Settings, Docker deployment and CI.
 - **Phase 1, associates:** roster with search and filters, PM/Payroll seats, capability levels and notes, PTO, the directly-managed flag, plus the capability list and your time zone in Settings.
@@ -13,6 +13,7 @@ The full plan, including decisions and phases, is in [docs/DEVELOPMENT_PLAN.md](
 - **Phase 4, AI recommendations:** Claude proposes complete teams from the rules engine's facts, with names and codes replaced before anything is sent; accept, swap or decline, with history, usage and live evaluation scenarios (`npm run eval`).
 - **Phase 5, Cadence:** two-input 1:1 notes (date and notes) analyzed by Claude in the background: summary, action items, strengths, growth areas, skills and morale; an action-item checklist with follow-up suggestions; 90-day trend reports with talking points; and an overdue-1:1 view.
 - **Phase 6, Escalations:** two-input escalation log (date and details) with names, codes and contact details coded before Claude sees them, plus a preview. Claude proposes the client, people, category, severity, fault and root cause, and you confirm. Includes action items, Open/Resolved status, and trends over confirmed escalations by month, fault, category, severity, client and associates at fault, with Claude's pattern reading.
+- **Phase 7, Dashboard & Insights:** a dashboard with a "Needs attention" strip, the assignment queue, a 60-day first input timeline, capacity, upcoming PTO with conflicts on clients already assigned, due 1:1s, your action items and open escalations. Also an Insights page (capacity over time, first input density, fast starts and runway, implementation durations, escalations by implementation type and start, Claude acceptance and spend) and a Ctrl+K / Cmd+K command palette.
 
 ## Stack
 

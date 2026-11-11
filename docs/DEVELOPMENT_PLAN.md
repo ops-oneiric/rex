@@ -1,7 +1,7 @@
 # Rex — Development Plan
 
 > Status: **v1.0, approved.** All open questions use their defaults (Section 13), and 2FA is out of scope (D11).
-> **Phases 0 to 6 are complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
+> **Phases 0 to 7 are complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
 
 ---
 
@@ -410,7 +410,7 @@ You have no historical data, so together we'll write **10–15 realistic test sc
 - **Trends tab:** totals, awaiting review and preventable share, escalations per month, and counts by fault, category, severity, client and associates at fault, over 180 days of **confirmed** escalations only. Being involved isn't counted against anyone; only confirmed fault is.
 - **Claude's pattern reading** (effort `high`, prompt `escalation-trend-v1`) needs at least two confirmed escalations. It returns an overview, patterns, process fixes and a watch list, from coded rows that include stage and implementation type.
 - **Elsewhere:** client pages and the associate Escalations tab list related escalations. The dashboard's "Open escalations" tile is live. An associate's 1:1 trend report (prompt `trend-v2`) now includes their confirmed escalations: dates, categories, severity and whether fault was theirs, but not the details.
-- **Not built yet:** exact charts by implementation type and by fast start versus normal start (moved to Phase 7 Insights), and sending a client's earlier escalations as context for a new review.
+- **Not built yet:** sending a client's earlier escalations as context for a new review. (The charts by implementation type and by fast start versus normal start were added on the Insights page in Phase 7.)
 
 - **On save:** the entry is saved immediately. Analysis runs in the background and appears within seconds. If the API fails, the entry is safe and "Retry analysis" appears.
 - **Context:** for Cadence, the associate's previous few entries and open action items, to track follow-through. For Escalations, the coded client/associate roster (to match references) and that client's prior escalations.
@@ -435,6 +435,20 @@ You have no historical data, so together we'll write **10–15 realistic test sc
 | **Settings** | AI (API key, model, test connection, scrub list, preview behavior), assignment rules (weights, windows, bands, priority order), holidays, capabilities, complexity scale, password, backups and data export. |
 
 Global: a command palette (Ctrl+K) to jump to any company code or associate.
+
+*As built in Phase 7:*
+- **Dashboard:**
+  - Four tiles: awaiting assignment (with the fast-start count), active implementations, first inputs in the next 30 days, and open escalations (with how many need review).
+  - A "Needs attention" strip that appears only when something does: PTO conflicts near a first input, fast starts without a team, escalations to review, overdue 1:1s.
+  - Widgets: the assignment queue (fast starts first), the first input timeline for 60 days with collisions in red, capacity bars, upcoming PTO, 1:1s that are due, your open action items (tick them off in place), and open escalations.
+- **PTO conflicts after assignment:** Rex now checks PTO against clients each associate already holds, using the same windows as the rules engine (the first input window for every seat, and benefits start in amber). The Upcoming PTO card covers the next 30 days, plus any later PTO that conflicts.
+- **Insights:** a 3, 6 or 12 month period; each chart has a table view.
+  - *Capacity:* team load by week against the active team's combined target (rebuilt from assignment and stage history, using each client's current weight), and first inputs per week for the next 26 weeks.
+  - *Assignments:* fast start rate, runway from assignment to first input in business days, fast starts by implementation type, active implementations by support model, and clients by stage.
+  - *Implementations:* duration from entering Implementation to Service, with the median by implementation type.
+  - *Escalations:* per month, by fault, by implementation type, and fast start versus normal start (confirmed only).
+  - *Claude:* recommendation outcomes and acceptance rate, knock-out overrides, and estimated spend.
+- **Command palette:** Ctrl+K (Cmd+K on a Mac), the sidebar Search button, or the search icon on a phone. Search by company code, client name, associate name or title; an exact company code comes first. It also lists every page and four shortcuts: new client, new associate, log an escalation, log a 1:1. Arrow keys and Enter work, and screen readers announce the highlighted result.
 
 ---
 
@@ -466,7 +480,7 @@ You review each phase before the next starts.
 | **4. AI recommendations** (done) | Claude integration, privacy layer, team recommendations, review/accept/swap/decline, history, usage, test scenarios | Get recommended teams | L |
 | **5. Cadence** (done) | Two-input entry, background analysis, action items, follow-up suggestions, associate trend reports, 1:1 rhythm | Log 1:1s and get insights | M |
 | **6. Escalations** (done) | Two-input entry, scrubbing + preview, extraction and roster matching, confirm, fault alignment, trends | Log escalations and see patterns | M |
-| **7. Dashboard & Insights** | Dashboard widgets, Insights charts, command palette | See everything at a glance | M |
+| **7. Dashboard & Insights** (done) | Dashboard widgets, Insights charts, command palette | See everything at a glance | M |
 | **8. Go-live** | Security review, backups, deploy to your server, short user guide | Use it in production | S |
 
 Phases 5 and 6 share most of their machinery, so the second is quicker to build.
@@ -523,7 +537,8 @@ You approved the default for every question below (D10). They are kept here as a
 
 ## 14. Next step
 
-Phases 0 to 6 are done. **Phase 7 (Dashboard & Insights)** is next:
-- dashboard widgets: upcoming first inputs, PTO conflicts, capacity, overdue 1:1s, open action items and escalations needing review;
-- Insights charts: workload over time, fast starts, assignments by support model, and escalations by implementation type and by fast start versus normal start;
-- a command palette for jumping to any client, associate or page.
+Phases 0 to 7 are done. **Phase 8 (Go-live)** is next:
+- a security review of the whole app (auth, sessions, headers, privacy layer, dependency audit);
+- automatic SQLite backups with retention, and a restore drill;
+- deployment to your server with HTTPS (Docker Compose and Caddy are ready), plus a health check;
+- a short user guide.
