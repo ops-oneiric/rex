@@ -36,7 +36,7 @@ curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker "$USER"
 ```
 
-Log out and back in so the group change applies.
+Log out and back in so the group change applies (or run `newgrp docker` in the current shell). Check with `docker ps`: it should print a table header, not "permission denied".
 
 Allow only SSH and web traffic through the firewall:
 
@@ -220,6 +220,8 @@ Rex reports `ok` at `/api/health`. Docker uses it to mark the container healthy,
 | What you see | What to check |
 |---|---|
 | The browser says the connection isn't secure, or Caddy's logs mention ACME or a certificate challenge | DNS must point at this server and ports 80 and 443 must be open. Check with `docker compose logs caddy`. Caddy retries by itself once the problem is fixed. |
+| `permission denied while trying to connect to the docker API at unix:///var/run/docker.sock` | Your user isn't in the `docker` group yet, or you haven't logged in again since adding it. Run `groups`; if `docker` is missing, run `sudo usermod -aG docker "$USER"`. Then log out and back in (or run `newgrp docker`). |
+| `Cannot connect to the Docker daemon` | Docker isn't running. Start it with `sudo systemctl enable --now docker`. |
 | You sign in and land back on the login page | Rex is being used over plain HTTP. Use the `https://` address. |
 | "Sign-in is locked" | Wait for the time shown, or reset the password with `set-admin.mjs` (above). |
 | Settings says the encryption key is missing | `REX_ENCRYPTION_KEY` is empty or isn't 32 bytes of base64. Fix `.env`, then run `docker compose up -d`. |
