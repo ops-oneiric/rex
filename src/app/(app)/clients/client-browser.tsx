@@ -14,7 +14,9 @@ import {
   SUPPORT_MODELS,
   type Stage,
 } from "@/lib/clients/constants";
-import type { ClientWithFacts } from "@/lib/clients/data";
+import type { ClientWithFacts as BaseClient } from "@/lib/clients/data";
+
+type ClientWithFacts = BaseClient & { team: { associateId: number; name: string }[] };
 import { formatDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { FastStartBadge, FirstInput, relativeBusinessDays, StageBadge } from "./badges";
@@ -29,6 +31,12 @@ export function ClientBrowser({ rows, view }: { rows: ClientWithFacts[]; view: "
   const [type, setType] = useState("");
   const [model, setModel] = useState("");
   const [fastOnly, setFastOnly] = useState(false);
+  const [associate, setAssociate] = useState("");
+  const people = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const r of rows) for (const t of r.team) m.set(t.associateId, t.name);
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [rows]);
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -36,10 +44,11 @@ export function ClientBrowser({ rows, view }: { rows: ClientWithFacts[]; view: "
       if (type && r.implementationType !== type) return false;
       if (model && r.supportModel !== model) return false;
       if (fastOnly && !r.fastStart?.isFastStart) return false;
+      if (associate && !r.team.some((t) => String(t.associateId) === associate)) return false;
       if (q && !`${r.companyCode ?? ""} ${r.displayName ?? ""}`.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [rows, query, type, model, fastOnly]);
+  }, [rows, query, type, model, fastOnly, associate]);
 
   const tableRows = matches.filter((r) =>
     stage === "all" ? true : stage === "book" ? r.lifecycleStage !== "SERVICE" : r.lifecycleStage === stage,
@@ -80,6 +89,14 @@ export function ClientBrowser({ rows, view }: { rows: ClientWithFacts[]; view: "
             <option key={m} value={m}>{SUPPORT_MODEL_LABELS[m]}</option>
           ))}
         </Select>
+        {people.length > 0 && (
+          <Select value={associate} onChange={(e) => setAssociate(e.target.value)} aria-label="Filter by associate" className="w-auto">
+            <option value="">Any associate</option>
+            {people.map(([id, name]) => (
+              <option key={id} value={id}>{name}</option>
+            ))}
+          </Select>
+        )}
         <label className="flex h-10 cursor-pointer items-center gap-2 px-1 text-sm text-ink">
           <input type="checkbox" checked={fastOnly} onChange={(e) => setFastOnly(e.target.checked)} className="size-4 accent-rex-800" />
           Fast starts only
@@ -95,13 +112,14 @@ function ClientTable({ rows, total }: { rows: ClientWithFacts[]; total: number }
   return (
     <Card className="p-0">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[60rem] text-left text-sm">
+        <table className="w-full min-w-[68rem] text-left text-sm">
           <thead>
             <tr className="text-xs tracking-wide whitespace-nowrap text-ink-muted uppercase">
               <th scope="col" className="px-4 py-3 font-medium">Client</th>
               <th scope="col" className="px-4 py-3 font-medium">Stage</th>
               <th scope="col" className="px-4 py-3 font-medium">Type and model</th>
               <th scope="col" className="px-4 py-3 text-right font-medium">Employees</th>
+              <th scope="col" className="px-4 py-3 font-medium">Team</th>
               <th scope="col" className="px-4 py-3 text-right font-medium">Controls</th>
               <th scope="col" className="px-4 py-3 text-right font-medium">Complexity</th>
               <th scope="col" className="px-4 py-3 font-medium">First input</th>
@@ -128,6 +146,15 @@ function ClientTable({ rows, total }: { rows: ClientWithFacts[]; total: number }
                   <div className="text-xs text-ink-muted">{r.supportModel ? SUPPORT_MODEL_LABELS[r.supportModel] : "Model not set"}</div>
                 </td>
                 <td className="tabular px-4 py-3 text-right">{r.employeeCount?.toLocaleString() ?? "—"}</td>
+                <td className="px-4 py-3 text-xs">
+                  {r.team.length ? (
+                    r.team.map((t) => <div key={t.associateId} className="whitespace-nowrap text-ink">{t.name}</div>)
+                  ) : r.lifecycleStage === "IMPLEMENTATION" ? (
+                    <span className="text-amber-800">Unassigned</span>
+                  ) : (
+                    <span className="text-ink-muted/70">—</span>
+                  )}
+                </td>
                 <td className="tabular px-4 py-3 text-right">{r.controlCount ?? "—"}</td>
                 <td className="tabular px-4 py-3 text-right">{r.payrollComplexity ?? "—"}</td>
                 <td className="px-4 py-3"><FirstInput date={r.firstInputDate} days={r.businessDaysToFirstInput} /></td>

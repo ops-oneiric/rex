@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, ArrowLeft, Building2, CalendarCheck } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CalendarCheck } from "lucide-react";
 import { ComingSoon } from "@/components/layout/coming-soon";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,8 @@ import { CapabilityChip, ManagedBadge, PtoStatus, SeatBadges } from "../badges";
 import { AssociateActions } from "./associate-actions";
 import { CapabilityEditor } from "./capability-editor";
 import { PtoPanel } from "./pto-panel";
+import { ClientsTab } from "./clients-tab";
+import { associateAssignments } from "@/lib/assignments/data";
 
 const TABS = ["profile", "capabilities", "pto", "clients", "cadence", "escalations"] as const;
 type Tab = (typeof TABS)[number];
@@ -76,7 +78,12 @@ export default async function AssociatePage({ params, searchParams }: PageProps<
           { id: "profile", label: "Profile", href: base },
           { id: "capabilities", label: "Capabilities", href: `${base}?tab=capabilities`, count: assigned.length },
           { id: "pto", label: "PTO", href: `${base}?tab=pto`, count: upcomingPto.length },
-          { id: "clients", label: "Clients", href: `${base}?tab=clients`, muted: true },
+          {
+            id: "clients",
+            label: "Clients",
+            href: `${base}?tab=clients`,
+            count: associateAssignments(associate.id).filter((r) => r.a.status === "ACTIVE").length,
+          },
           ...(associate.isDirectlyManaged
             ? [{ id: "cadence", label: "Cadence", href: `${base}?tab=cadence`, muted: true }]
             : []),
@@ -174,14 +181,7 @@ export default async function AssociatePage({ params, searchParams }: PageProps<
         />
       )}
 
-      {tab === "clients" && (
-        <ComingSoon
-          phase={3}
-          icon={<Building2 />}
-          title="Assigned clients"
-          points={["Current and past accounts with the seat held on each", "Weighted load against the target"]}
-        />
-      )}
+      {tab === "clients" && <ClientsTab associateId={associate.id} targetLoad={associate.targetLoad} />}
       {tab === "cadence" && (
         <ComingSoon
           phase={5}

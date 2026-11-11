@@ -97,7 +97,7 @@ test("weights, complexity scale and holidays in Settings", async ({ page }) => {
   await expect(page.getByRole("row", { name: /ACM/ })).toContainText("1.60");
 
   await page.goto("/settings?tab=rules");
-  await page.getByRole("button", { name: "Reset to defaults" }).click();
+  await page.getByRole("button", { name: "Reset weights" }).click();
   await expect(page.getByText("Weights reset to the defaults.")).toBeVisible();
   await expect(page.getByText(/normal start = 1.10/)).toBeVisible();
 

@@ -6,7 +6,10 @@ import { ChevronRight, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
+import { LoadBar } from "@/components/assign/load-bar";
 import type { RosterRow } from "@/lib/associates/data";
+import type { AssociateLoad } from "@/lib/assignments/data";
+import { formatDate } from "@/lib/dates";
 import { timeZoneLabel } from "@/lib/time-zones";
 import { cn } from "@/lib/utils";
 import { CapabilityChip, ManagedBadge, PtoStatus, SeatBadges } from "./badges";
@@ -16,7 +19,9 @@ type Seat = "any" | "pm" | "payroll" | "hybrid";
 
 const MAX_CHIPS = 3;
 
-export function Roster({ rows, today }: { rows: RosterRow[]; today: string }) {
+type Row = RosterRow & { load: AssociateLoad | null };
+
+export function Roster({ rows, today }: { rows: Row[]; today: string }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<Status>("active");
   const [seat, setSeat] = useState<Seat>("any");
@@ -88,7 +93,7 @@ export function Roster({ rows, today }: { rows: RosterRow[]; today: string }) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[56rem] text-left text-sm">
+        <table className="w-full min-w-[64rem] text-left text-sm">
           <thead>
             <tr className="text-xs tracking-wide whitespace-nowrap text-ink-muted uppercase">
               <th scope="col" className="px-4 py-3 font-medium">Associate</th>
@@ -96,7 +101,7 @@ export function Roster({ rows, today }: { rows: RosterRow[]; today: string }) {
               <th scope="col" className="px-4 py-3 font-medium">Time zone</th>
               <th scope="col" className="px-4 py-3 font-medium">Capabilities</th>
               <th scope="col" className="px-4 py-3 font-medium">Next PTO</th>
-              <th scope="col" className="px-4 py-3 text-right font-medium">Target</th>
+              <th scope="col" className="px-4 py-3 font-medium">Load</th>
               <th scope="col" className="w-8 px-2"><span className="sr-only">Open</span></th>
             </tr>
           </thead>
@@ -140,7 +145,18 @@ export function Roster({ rows, today }: { rows: RosterRow[]; today: string }) {
                 <td className="px-4 py-3">
                   <PtoStatus pto={r.nextPto} today={today} />
                 </td>
-                <td className="tabular px-4 py-3 text-right text-ink">{r.targetLoad}</td>
+                <td className="px-4 py-3">
+                  {r.load ? (
+                    <>
+                      <LoadBar className="w-40" before={r.load.projected} target={r.targetLoad} band={r.load.band} />
+                      <p className="mt-1 text-xs text-ink-muted">
+                        {r.load.accounts} account{r.load.accounts === 1 ? "" : "s"}
+                        {r.load.holds > 0 && `, ${r.load.holds} hold${r.load.holds === 1 ? "" : "s"}`}
+                        {r.load.nextFirstInput && ` · next input ${formatDate(r.load.nextFirstInput).replace(/, \d{4}$/, "")}`}
+                      </p>
+                    </>
+                  ) : null}
+                </td>
                 <td className="px-2 py-3 text-rex-400">
                   <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                 </td>
@@ -153,7 +169,7 @@ export function Roster({ rows, today }: { rows: RosterRow[]; today: string }) {
         )}
       </div>
       <p className="border-t border-rex-900/8 px-4 py-3 text-xs text-ink-muted">
-        Showing {filtered.length} of {rows.length}. Load bars appear once clients can be assigned (Phase 3).
+        Showing {filtered.length} of {rows.length}. Load is the weighted sum of their seats on Implementation clients, plus holds on prospects; the tick marks each person&apos;s target.
       </p>
     </Card>
   );

@@ -16,6 +16,7 @@ import {
 import { clientSchema, stageChangeNoteSchema } from "@/lib/clients/validation";
 import { fieldErrors, formValues, type FormResult } from "@/lib/forms";
 import { clientIp } from "@/lib/request";
+import { reconcileSeats } from "@/lib/assignments/data";
 
 const DUPLICATE_CODE = "Another client already uses this company code.";
 
@@ -80,9 +81,10 @@ export async function updateClientAction(id: number, _prev: FormResult, formData
     if (error instanceof DuplicateCodeError) return { errors: { companyCode: DUPLICATE_CODE }, values: formValues(formData) };
     throw error;
   }
-  audit("client.updated", { id }, await clientIp());
+  const ended = reconcileSeats(id);
+  audit("client.updated", { id, endedAssignments: ended }, await clientIp());
   refresh(id);
-  redirect(`/clients/${id}`);
+  redirect(`/clients/${id}${ended ? `?seatsEnded=${ended}` : ""}`);
 }
 
 export async function changeStageAction(
@@ -105,9 +107,13 @@ export async function changeStageAction(
           : "That stage change is not allowed.",
     };
   }
-  audit("client.stage_changed", { id, to }, await clientIp());
+  audit("client.stage_changed", { id, to, endedAssignments: result.endedAssignments }, await clientIp());
   refresh(id);
-  return { ok: true, message: `Moved to ${STAGE_LABELS[to]}.` };
+  revalidatePath("/associates", "layout");
+  return {
+    ok: true,
+    message: `Moved to ${STAGE_LABELS[to]}.${result.endedAssignments ? ` ${result.endedAssignments} assignment${result.endedAssignments === 1 ? "" : "s"} ended.` : ""}`,
+  };
 }
 
 export async function deleteClientAction(id: number) {

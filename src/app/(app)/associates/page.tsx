@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { listRoster } from "@/lib/associates/data";
+import { allLoads } from "@/lib/assignments/data";
 import { requireAdmin } from "@/lib/auth/dal";
 import { today } from "@/lib/settings";
 import { Roster } from "./roster";
@@ -23,7 +24,8 @@ const addButton = (
 export default async function AssociatesPage() {
   await requireAdmin();
   const todayIso = today();
-  const rows = listRoster(todayIso);
+  const loads = allLoads();
+  const rows = listRoster(todayIso).map((r) => ({ ...r, load: loads.get(r.id) ?? null }));
 
   return (
     <>

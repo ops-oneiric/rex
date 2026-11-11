@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireAdmin } from "@/lib/auth/dal";
 import { listClients, withFacts } from "@/lib/clients/data";
+import { teamsByClient } from "@/lib/assignments/data";
 import { cn } from "@/lib/utils";
 import { ClientBrowser } from "./client-browser";
 
@@ -23,7 +24,8 @@ const addButton = (
 export default async function ClientsPage({ searchParams }: PageProps<"/clients">) {
   await requireAdmin();
   const view = (await searchParams).view === "board" ? "board" : "table";
-  const rows = withFacts(listClients());
+  const teams = teamsByClient();
+  const rows = withFacts(listClients()).map((c) => ({ ...c, team: teams.get(c.id) ?? [] }));
 
   const toggle = (
     <div className="glass inline-flex rounded-xl p-1" role="group" aria-label="View">

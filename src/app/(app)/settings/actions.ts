@@ -20,8 +20,10 @@ import {
   setAiModel,
   setComplexityScale,
   setHomeTimeZone,
+  setRuleSettings,
   setWeightSettings,
 } from "@/lib/settings";
+import { DEFAULT_RULES, ruleSettingsSchema } from "@/lib/assignments/rules";
 import { DEFAULT_WEIGHTS, weightSettingsSchema } from "@/lib/clients/weight";
 import { isIsoDate } from "@/lib/dates";
 import { addFederalHolidays, addHoliday, DuplicateHolidayError, removeHoliday } from "@/lib/holidays";
@@ -253,4 +255,32 @@ export async function addFederalHolidaysAction(year: number): Promise<FormResult
     ok: true,
     message: added ? `Added ${added} US federal holiday${added === 1 ? "" : "s"} for ${year}.` : `All ${year} federal holidays were already listed.`,
   };
+}
+
+export async function saveRulesAction(_prev: FormResult, formData: FormData): Promise<FormResult> {
+  await requireAdmin();
+  const raw = Object.fromEntries(
+    Object.keys(DEFAULT_RULES).map((k) => [k, Number(String(formData.get(k) ?? "").trim() || NaN)]),
+  );
+  const parsed = ruleSettingsSchema.safeParse(raw);
+  if (!parsed.success) return { ok: false, message: "Check the values: windows are whole numbers and shares are between 0 and 1." };
+  const r = parsed.data;
+  if (!(r.bandHealthy <= r.bandFull && r.bandFull <= r.bandOver)) {
+    return { ok: false, message: "Load bands must go up: Healthy from, then Full above, then Over above." };
+  }
+  if (r.collisionClose < r.collisionConflict) {
+    return { ok: false, message: "The 'close' window must be at least as wide as the 'conflict' window." };
+  }
+  setRuleSettings(r);
+  audit("settings.rules_changed", r, await clientIp());
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Assignment rules saved." };
+}
+
+export async function resetRulesAction(): Promise<FormResult> {
+  await requireAdmin();
+  setRuleSettings(DEFAULT_RULES);
+  audit("settings.rules_changed", { reset: true }, await clientIp());
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Assignment rules reset to the defaults." };
 }

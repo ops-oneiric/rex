@@ -12,10 +12,10 @@ import type { FormResult } from "@/lib/forms";
 import { changeStageAction, deleteClientAction } from "../actions";
 
 const consequences: Partial<Record<`${Stage}>${Stage}`, string>> = {
-  "PROSPECT>IMPLEMENTATION": "The client joins your book of business and will count toward associate capacity once assigned.",
-  "IMPLEMENTATION>SERVICE": "The client leaves your book of business and stops counting toward capacity. Its history is kept.",
-  "IMPLEMENTATION>PROSPECT": "The client returns to the pipeline.",
-  "SERVICE>IMPLEMENTATION": "The client returns to your book of business.",
+  "PROSPECT>IMPLEMENTATION": "The client joins your book of business. Any holds become the team and start counting toward capacity.",
+  "IMPLEMENTATION>SERVICE": "The client leaves your book of business. Every team assignment ends today and stops counting toward capacity. History is kept.",
+  "IMPLEMENTATION>PROSPECT": "The client returns to the pipeline. Its team stays as holds (projected load only).",
+  "SERVICE>IMPLEMENTATION": "The client returns to your book of business. Its earlier team is not restored; assign a new one.",
 };
 
 export function ClientActions({

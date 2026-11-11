@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, ArrowLeft, CalendarClock, History, Scale, Users } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CalendarClock, History, Scale } from "lucide-react";
 import { ComingSoon } from "@/components/layout/coming-soon";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import { getComplexityScale, getHomeTimeZone } from "@/lib/settings";
 import { timeZoneLabel } from "@/lib/time-zones";
 import { FastStartBadge, relativeBusinessDays, StageBadge } from "../badges";
 import { ClientActions } from "./stage-actions";
+import { TeamCard } from "./team-card";
 
 export async function generateMetadata({ params }: PageProps<"/clients/[id]">) {
   const client = getClient(Number((await params).id));
@@ -32,7 +33,9 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
   const row = getClient(Number((await params).id));
   if (!row) notFound();
   const [client] = withFacts([row]);
-  const justCreated = (await searchParams).created === "1";
+  const sp = await searchParams;
+  const justCreated = sp.created === "1";
+  const seatsEnded = Number(sp.seatsEnded ?? 0);
   const history = getStageHistory(client!.id);
   const c = client!;
   const missing = c.lifecycleStage === "PROSPECT" ? missingForStage(c, "IMPLEMENTATION").map(([, l]) => l) : [];
@@ -74,6 +77,11 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
       {justCreated && (
         <Alert tone="success" className="mb-6">
           {clientLabel(c)} was added as {c.lifecycleStage === "PROSPECT" ? "a prospect" : "an implementation"}.
+        </Alert>
+      )}
+      {seatsEnded > 0 && (
+        <Alert tone="info" className="mb-6">
+          The support model changed, so {seatsEnded} assignment{seatsEnded === 1 ? "" : "s"} in seats it no longer has ended.
         </Alert>
       )}
       {missing.length > 0 && (
@@ -156,15 +164,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
             </dl>
           </Card>
 
-          {c.lifecycleStage !== "PROSPECT" && (
-            <ComingSoon
-              className="max-w-none"
-              phase={3}
-              icon={<Users />}
-              title="Team"
-              points={["Assign associates to each seat of the support model", "PTO knock-outs and first input collisions checked as you assign"]}
-            />
-          )}
+          <TeamCard client={c} />
         </div>
 
         <div className="space-y-6">

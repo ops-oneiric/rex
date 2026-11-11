@@ -3,6 +3,7 @@ import { and, asc, count, desc, eq, ne } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { getHolidaySet } from "@/lib/holidays";
 import { getWeightSettings, today } from "@/lib/settings";
+import { endAllAssignments } from "@/lib/assignments/lifecycle";
 import type { Stage } from "./constants";
 import { deriveClient, type DerivedClient } from "./derive";
 import { allowedTransitions, missingForStage, type ClientInput } from "./validation";
@@ -76,7 +77,7 @@ export function updateClient(id: number, input: ClientInput) {
 }
 
 export type StageChangeResult =
-  | { ok: true }
+  | { ok: true; endedAssignments: number }
   | { ok: false; reason: "not_allowed" }
   | { ok: false; reason: "missing"; missing: string[] };
 
@@ -86,15 +87,24 @@ export function changeStage(id: number, to: Stage, note: string): StageChangeRes
   const missing = missingForStage(client, to);
   if (missing.length) return { ok: false, reason: "missing", missing: missing.map(([, label]) => label) };
 
-  db.transaction((tx) => {
-    tx.update(clients)
-      .set({ lifecycleStage: to, stageChangedAt: new Date(), updatedAt: new Date() })
-      .where(eq(clients.id, id))
-      .run();
+  const todayIso = today();
+  const endedAssignments = db.transaction((tx) => {
+    const fields: Partial<typeof clients.$inferInsert> = { lifecycleStage: to, stageChangedAt: new Date(), updatedAt: new Date() };
+    let ended = 0;
+    if (to === "SERVICE") {
+      // Service clients leave the book: their team's assignments end today.
+      ended = endAllAssignments(tx, id, todayIso);
+    } else if (to === "IMPLEMENTATION" && client.lifecycleStage === "PROSPECT" && !client.assignedOn) {
+      // Holds on a prospect become the real team today, which fixes the fast start date.
+      const holds = tx.select({ id: schema.assignments.id }).from(schema.assignments)
+        .where(and(eq(schema.assignments.clientId, id), eq(schema.assignments.status, "ACTIVE"))).all();
+      if (holds.length) fields.assignedOn = todayIso;
+    }
+    tx.update(clients).set(fields).where(eq(clients.id, id)).run();
     tx.insert(clientStageHistory).values({ clientId: id, fromStage: client.lifecycleStage, toStage: to, note }).run();
-    // Phase 3: moving to SERVICE also closes the client's active assignments here.
+    return ended;
   });
-  return { ok: true };
+  return { ok: true, endedAssignments };
 }
 
 export function deleteClient(id: number) {

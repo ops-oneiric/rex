@@ -36,6 +36,13 @@
       "when": 1794328364488,
       "tag": "0004_seed_holidays",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1794359533282,
+      "tag": "0005_assignments",
+      "breakpoints": true
     }
   ]
 }

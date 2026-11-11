@@ -1,4 +1,4 @@
-import { CalendarDays, Globe, KeyRound, ListChecks, Scale, Sigma, Sparkles } from "lucide-react";
+import { CalendarDays, Globe, KeyRound, ListChecks, Scale, Sigma, Sparkles, Waypoints } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import {
   getApiKeyStatus,
   getComplexityScale,
   getHomeTimeZone,
+  getRuleSettings,
   getWeightSettings,
   today,
 } from "@/lib/settings";
@@ -25,6 +26,7 @@ import { HolidayManager } from "./holiday-manager";
 import { PasswordForm } from "./password-form";
 import { TimeZoneForm } from "./time-zone-form";
 import { WeightsForm } from "./weights-form";
+import { RulesForm } from "./rules-form";
 
 export const metadata = { title: "Settings" };
 
@@ -132,6 +134,14 @@ function RulesTab() {
           description="How much each client adds to an associate's load. A typical account is about 1.0; aim for 5 to 10 per associate."
         />
         <WeightsForm current={getWeightSettings()} />
+      </Card>
+      <Card>
+        <CardHeader
+          icon={<Waypoints />}
+          title="Assignment rules"
+          description="The checks Rex runs on every candidate. Changes apply immediately to loads, flags and rankings."
+        />
+        <RulesForm current={getRuleSettings()} />
       </Card>
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Card>

@@ -7,6 +7,7 @@ import { todayIn } from "@/lib/dates";
 import { DEFAULT_TIME_ZONE, isValidTimeZone } from "@/lib/time-zones";
 import { DEFAULT_WEIGHTS, weightSettingsSchema, type WeightSettings } from "@/lib/clients/weight";
 import { DEFAULT_COMPLEXITY_SCALE } from "@/lib/clients/constants";
+import { DEFAULT_RULES, ruleSettingsSchema, type RuleSettings } from "@/lib/assignments/rules";
 import { z } from "zod";
 
 const AI_KEY_SECRET = "anthropic_api_key";
@@ -14,6 +15,7 @@ const AI_MODEL_SETTING = "ai.model";
 const HOME_TIME_ZONE_SETTING = "app.timeZone";
 const WEIGHTS_SETTING = "rules.weights";
 const COMPLEXITY_SCALE_SETTING = "clients.complexityScale";
+const RULES_SETTING = "rules.assignment";
 
 function getSetting<T>(key: string): T | undefined {
   const row = db.select().from(schema.settings).where(eq(schema.settings.key, key)).get();
@@ -99,4 +101,14 @@ export function getComplexityScale(): [string, string, string, string, string] {
 
 export function setComplexityScale(scale: [string, string, string, string, string]) {
   setSetting(COMPLEXITY_SCALE_SETTING, scale);
+}
+
+/** Assignment rule settings (PTO windows, collisions, seat shares, bands). */
+export function getRuleSettings(): RuleSettings {
+  const parsed = ruleSettingsSchema.safeParse(getSetting(RULES_SETTING));
+  return parsed.success ? parsed.data : DEFAULT_RULES;
+}
+
+export function setRuleSettings(rules: RuleSettings) {
+  setSetting(RULES_SETTING, rules);
 }

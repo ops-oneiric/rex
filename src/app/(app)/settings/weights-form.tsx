@@ -132,7 +132,7 @@ export function WeightsForm({ current }: { current: WeightSettings }) {
           }
         >
           <RotateCcw aria-hidden="true" />
-          Reset to defaults
+          Reset weights
         </Button>
       </div>
       {message.message && <Alert tone={message.ok ? "success" : "error"}>{message.message}</Alert>}

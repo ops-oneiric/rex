@@ -1,7 +1,7 @@
 # Rex — Development Plan
 
 > Status: **v1.0, approved.** All open questions use their defaults (Section 13), and 2FA is out of scope (D11).
-> **Phases 0, 1 and 2 are complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
+> **Phases 0 to 3 are complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
 
 ---
 
@@ -244,7 +244,18 @@ For prospects, fields can be filled in gradually. Everything above is required b
 
 ### 5.3 Assignments and recommendations
 
-**`assignments`**: client, associate, seat (`HYBRID` / `PM` / `PAYROLL`), status (`TENTATIVE` / `ACTIVE` / `ENDED`), start_date, end_date, source (`MANUAL` / `AI_ACCEPTED` / `AI_MODIFIED`), recommendation_id.
+**`assignments`**: client, associate, seat (`HYBRID` / `PM` / `PAYROLL_1` / `PAYROLL_2`), status (`ACTIVE` / `ENDED`), start_date, end_date, end_reason (`UNASSIGNED` / `REPLACED` / `SERVICE`), source (`MANUAL` / `AI_ACCEPTED` / `AI_MODIFIED`), override_note.
+
+As built in Phase 3:
+- **Holds are assignments on prospects.** There is no separate TENTATIVE status. Holds count as *projected* load only, and become the real team when the client moves to Implementation.
+- **Assigned-on date** = the first day the client had a team member while in Implementation. It fixes the fast-start flag.
+- **One person per seat, one seat per person per client.** Replacing someone ends their assignment and keeps it in history. Unassigning on the same day deletes the record, since it was a correction rather than history.
+- **Moving to Service** ends every active assignment (reason SERVICE). Moving back does not restore the old team.
+- **Changing the support model** ends assignments in seats the new model doesn't have.
+- **Guards:** associates with any assignment history can't be deleted, only deactivated. An associate's seat eligibility can't be narrowed while they hold a seat it would forbid.
+- **PTO overrides:** assigning someone knocked out by PTO requires a reason, which is saved on the assignment.
+- **Capability fit** matches client needs to the starter capability names: New Logo, Add Control, Multi-Control (more than 1 control), Large Employer (500+), Complex Payroll (complexity 4+), In-house Conversions, and Benefits-heavy (benefits start within 10 business days of first input). Renamed capabilities aren't matched by the rules engine, but Claude will still read every capability and note in Phase 4.
+- **Rules engine score (0-100):** starts at 85, plus up to 15 for capability fit and up to 5 for experience. Deductions: PM-seat PTO −35, fast-start PTO −30, benefits PTO −15, each conflict −25 (max −50), each close collision −10 (max −20), 8 per load unit above "Full" and 15 per unit above "Over", and 2 per hour of time-zone difference. Every rule window, seat share and band is editable in Settings.
 
 **`ai_recommendations`**: client, support model, **outgoing payload exactly as sent** (already coded), the alias map (kept separately on the server), output JSON, model, prompt version, outcome (`ACCEPTED` / `MODIFIED` / `REJECTED`), optional override reason, tokens and cost.
 
@@ -409,7 +420,7 @@ You review each phase before the next starts.
 | **0. Foundation** (done) | Repo, design tokens, glass components, sidebar, crown logo, login with lockout, database, settings with encrypted API key, CI, Docker | Log in and see the styled app | M |
 | **1. Associates** (done) | CRUD, seat eligibility (PM/Payroll), capabilities + proficiency, capability notes, PTO, directly-managed flag, capability list and home time zone in Settings | Enter your roster | M |
 | **2. Clients & lifecycle** (done) | Your client fields, company code validation, lifecycle + history, prospect pipeline, board view, business-day calendar with holidays, fast start flag, workload weight with editable formula, complexity scale | Enter your book of business and pipeline | M |
-| **3. Assignments & rules engine** | Seats per support model, manual assignment, capacity bands, PTO knock-outs, first input collisions, fact sheets, first input timeline, auto-close on Service | Assign by hand with every rule visible | M |
+| **3. Assignments & rules engine** (done) | Seats per support model, manual assignment with ranked candidates, holds on prospects, capacity bands and load bars, PTO knock-outs with override, first input collisions, fact sheets, first input timeline, auto-close on Service, editable rule settings | Assign by hand with every rule visible | M |
 | **4. AI recommendations** | Claude integration, privacy layer, team recommendations, review/accept/swap/override, history, test scenarios | Get recommended teams | L |
 | **5. Cadence** | Two-input entry, background analysis, action items, associate trend reports | Log 1:1s and get insights | M |
 | **6. Escalations** | Two-input entry, scrubbing + preview, extraction and roster matching, confirm, fault alignment, trends | Log escalations and see patterns | M |
@@ -470,4 +481,8 @@ You approved the default for every question below (D10). They are kept here as a
 
 ## 14. Next step
 
-Phases 0, 1 and 2 are done. **Phase 3 (Assignments & rules engine)** is next: filling each seat of a client's support model by hand, capacity bands per associate, PTO knock-outs, first input collisions, candidate fact sheets, the first input timeline, and closing assignments automatically when a client moves to Service.
+Phases 0 to 3 are done. **Phase 4 (AI recommendations)** is next:
+- the privacy layer (company codes and names replaced with aliases before anything leaves the server);
+- Claude reading the rules engine's fact sheets and recommending complete teams with reasons;
+- accept, swap or override, with the recommendation history kept;
+- the test scenarios for checking recommendation quality.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button, type ButtonProps } from "./button";
 
@@ -27,6 +27,7 @@ export function ConfirmDialog({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const titleId = useId();
   const descriptionId = useId();
 
@@ -58,8 +59,20 @@ export function ConfirmDialog({
               </div>
             </div>
           </div>
+          {error && (
+            <p role="alert" className="mt-4 rounded-xl bg-red-50/80 px-3.5 py-3 text-sm text-red-900 ring-1 ring-red-600/20 ring-inset">
+              {error}
+            </p>
+          )}
           <div className="mt-6 flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => ref.current?.close()} disabled={pending}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setError(null);
+                ref.current?.close();
+              }}
+              disabled={pending}
+            >
               Cancel
             </Button>
             <Button
@@ -67,7 +80,13 @@ export function ConfirmDialog({
               disabled={pending}
               onClick={() =>
                 start(async () => {
-                  await onConfirm();
+                  const result = await onConfirm();
+                  // Actions may refuse with { ok: false, message }: keep the dialog open and say why.
+                  if (result && typeof result === "object" && "ok" in result && result.ok === false) {
+                    setError(String((result as { message?: string }).message ?? "That could not be done."));
+                    return;
+                  }
+                  setError(null);
                   ref.current?.close();
                 })
               }

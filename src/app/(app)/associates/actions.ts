@@ -25,6 +25,7 @@ import {
 import { formatDateRange } from "@/lib/dates";
 import { checkbox, fieldErrors, formValues, type FormResult } from "@/lib/forms";
 import { clientIp } from "@/lib/request";
+import { countAssignmentsForAssociate, seatsNoLongerAllowed } from "@/lib/assignments/data";
 
 function parseAssociate(formData: FormData) {
   return associateSchema.safeParse({
@@ -79,6 +80,13 @@ export async function updateAssociateAction(
   requireAssociate(id);
   const parsed = parseAssociate(formData);
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values: formValues(formData) };
+  const stranded = seatsNoLongerAllowed(id, parsed.data);
+  if (stranded.length) {
+    return {
+      errors: { seats: `They hold seats these changes would not allow on: ${stranded.join(", ")}. Reassign those seats first.` },
+      values: formValues(formData),
+    };
+  }
 
   try {
     updateAssociate(id, parsed.data);
@@ -99,9 +107,12 @@ export async function setAssociateActiveAction(id: number, isActive: boolean) {
   refresh(id);
 }
 
-export async function deleteAssociateAction(id: number) {
+export async function deleteAssociateAction(id: number): Promise<FormResult> {
   await requireAdmin();
   requireAssociate(id);
+  if (countAssignmentsForAssociate(id) > 0) {
+    return { ok: false, message: "This associate has client assignments on record, so their history must be kept. Deactivate them instead." };
+  }
   deleteAssociate(id);
   audit("associate.deleted", { id }, await clientIp());
   refresh();

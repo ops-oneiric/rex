@@ -189,3 +189,35 @@ export const holidays = sqliteTable("holidays", {
   name: text("name").notNull(),
   createdAt: timestamps.createdAt,
 });
+
+/* --------------------------------- Phase 3: Assignments ---------------------------------- */
+
+/**
+ * An associate in a seat on a client's team. Assignments on prospects are holds: they show
+ * as projected load only. Ending keeps the row for history.
+ */
+export const assignments = sqliteTable(
+  "assignments",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    clientId: integer("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "cascade" }),
+    associateId: integer("associate_id")
+      .notNull()
+      .references(() => associates.id, { onDelete: "restrict" }),
+    seat: text("seat", { enum: ["HYBRID", "PM", "PAYROLL_1", "PAYROLL_2"] }).notNull(),
+    status: text("status", { enum: ["ACTIVE", "ENDED"] }).notNull().default("ACTIVE"),
+    startDate: text("start_date").notNull(),
+    endDate: text("end_date"),
+    endReason: text("end_reason", { enum: ["UNASSIGNED", "REPLACED", "SERVICE"] }),
+    source: text("source", { enum: ["MANUAL", "AI_ACCEPTED", "AI_MODIFIED"] }).notNull().default("MANUAL"),
+    /** Set when chosen despite a PTO knock-out, so the override is on record. */
+    overrideNote: text("override_note"),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("assignments_active_seat_unique").on(t.clientId, t.seat).where(sql`${t.status} = 'ACTIVE'`),
+    index("assignments_associate_idx").on(t.associateId, t.status),
+  ],
+);
