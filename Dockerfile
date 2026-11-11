@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22-bookworm-slim AS deps
+# The full image has python3, make and g++, which npm needs if it compiles a native module
+# (better-sqlite3) from source. Only the final stage below ships, and it uses the slim image.
+FROM node:22-bookworm AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci

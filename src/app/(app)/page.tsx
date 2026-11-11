@@ -9,6 +9,8 @@ import {
   Check,
   Circle,
   Gauge,
+  HardDrive,
+  KeyRound,
   ListChecks,
   ListTodo,
   OctagonAlert,
@@ -23,7 +25,9 @@ import { ReviewBadge, SeverityBadge } from "@/components/escalations/badges";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
+import { failedSignIns } from "@/lib/auth/activity";
 import { requireAdmin } from "@/lib/auth/dal";
+import { backupHealth } from "@/lib/backups/service";
 import { countAssociates } from "@/lib/associates/data";
 import { CADENCE_STATUS_LABELS, type CadenceStatus } from "@/lib/cadence/status";
 import { listClients } from "@/lib/clients/data";
@@ -78,7 +82,23 @@ export default async function DashboardPage() {
 
   const redConflicts = d.conflicts.filter((c) => c.level === "red");
   const overdue = d.oneOnOnes.filter((r) => r.status === "OVERDUE");
+  const backups = backupHealth();
+  const failed = failedSignIns(24);
   const attention = [
+    (backups.failing || backups.stale) && {
+      key: "backup",
+      icon: HardDrive,
+      tone: "red",
+      text: backups.failing ? "The last backup failed" : "No backup in the last 48 hours",
+      href: "/settings?tab=backups",
+    },
+    failed >= 5 && {
+      key: "signin",
+      icon: KeyRound,
+      tone: "amber",
+      text: `${failed} failed sign-in attempts in the last day`,
+      href: "/settings?tab=security",
+    },
     redConflicts.length > 0 && {
       key: "pto",
       icon: OctagonAlert,

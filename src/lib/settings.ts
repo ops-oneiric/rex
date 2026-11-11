@@ -135,3 +135,16 @@ export function getCadenceDays(): number {
 export function setCadenceDays(days: number) {
   setSetting(CADENCE_DAYS_SETTING, days);
 }
+
+const BACKUP_STATUS_SETTING = "backup.status";
+
+export type BackupStatus = { lastSuccessAt: string | null; lastError: string | null; lastErrorAt: string | null };
+
+/** Outcome of the most recent backup attempts, so Settings and the dashboard can warn. */
+export function getBackupStatus(): BackupStatus {
+  return { lastSuccessAt: null, lastError: null, lastErrorAt: null, ...getSetting<Partial<BackupStatus>>(BACKUP_STATUS_SETTING) };
+}
+
+export function setBackupStatus(status: BackupStatus) {
+  setSetting(BACKUP_STATUS_SETTING, status);
+}

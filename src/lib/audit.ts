@@ -49,7 +49,12 @@ export type AuditAction =
   | "escalation.analyzed"
   | "escalation.confirmed"
   | "escalation.status_changed"
-  | "escalation.deleted";
+  | "escalation.deleted"
+  | "backup.created"
+  | "backup.failed"
+  | "backup.downloaded"
+  | "export.downloaded"
+  | "sessions.revoked";
 
 export function audit(action: AuditAction, detail: Record<string, unknown> | null = null, ip: string | null = null) {
   db.insert(schema.auditLog).values({ action, detail, ip }).run();

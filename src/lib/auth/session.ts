@@ -93,3 +93,17 @@ export async function destroyOtherSessions() {
     db.delete(schema.sessions).run();
   }
 }
+
+/** Live sessions, newest activity first, with the current one marked. */
+export async function listSessions() {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  const current = token ? sha256Hex(token) : null;
+  const now = Date.now();
+  return db
+    .select()
+    .from(schema.sessions)
+    .all()
+    .filter((s) => s.expiresAt.getTime() > now && s.lastSeenAt.getTime() + SESSION_IDLE_MS > now)
+    .sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())
+    .map((s) => ({ key: s.id.slice(0, 12), lastSeenAt: s.lastSeenAt, expiresAt: s.expiresAt, ip: s.ip, userAgent: s.userAgent, current: s.id === current }));
+}

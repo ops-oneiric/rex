@@ -9,6 +9,7 @@ import { ADMIN_ID, getAdmin } from "@/lib/auth/admin";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { validateNewPassword } from "@/lib/auth/policy";
 import { destroyOtherSessions } from "@/lib/auth/session";
+import { createBackup } from "@/lib/backups/service";
 import { testConnection } from "@/lib/ai/client";
 import { isSupportedModel } from "@/lib/ai/models";
 import { EncryptionKeyError } from "@/lib/crypto/secrets";
@@ -309,4 +310,26 @@ export async function saveCadenceDaysAction(_prev: FormResult, formData: FormDat
   audit("settings.cadence_changed", { days }, await clientIp());
   revalidatePath("/cadence");
   return { ok: true, message: "1:1 rhythm saved." };
+}
+
+/* ------------------------------------- Security and backups ------------------------------------- */
+
+export async function signOutOtherSessionsAction(): Promise<{ ok: boolean; message: string }> {
+  await requireAdmin();
+  await destroyOtherSessions();
+  audit("sessions.revoked", null, await clientIp());
+  revalidatePath("/settings");
+  return { ok: true, message: "Every other browser is signed out." };
+}
+
+export async function backupNowAction(): Promise<{ ok: boolean; message: string }> {
+  await requireAdmin();
+  try {
+    const file = await createBackup("manual");
+    revalidatePath("/settings");
+    return { ok: true, message: `Backup ${file.name} saved.` };
+  } catch (err) {
+    revalidatePath("/settings");
+    return { ok: false, message: err instanceof EncryptionKeyError ? err.message : `The backup failed: ${err instanceof Error ? err.message : String(err)}` };
+  }
 }

@@ -4,7 +4,12 @@ A private, single-admin web app for managing associates, assigning incoming clie
 
 The full plan, including decisions and phases, is in [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md).
 
-**Status:** Phases 0 to 7 are complete.
+**Status:** All phases (0 to 8) are complete. Rex is ready to deploy.
+
+- [Deployment and operations](docs/DEPLOYMENT.md): server setup, HTTPS, updates, backups and restore.
+- [User guide](docs/USER_GUIDE.md): setting Rex up and using it day to day.
+- [Security review](docs/SECURITY.md): controls, changes made before go-live, accepted risks.
+
 
 - **Phase 0, foundation:** login, layout, design system, encrypted Claude API key in Settings, Docker deployment and CI.
 - **Phase 1, associates:** roster with search and filters, PM/Payroll seats, capability levels and notes, PTO, the directly-managed flag, plus the capability list and your time zone in Settings.
@@ -14,6 +19,7 @@ The full plan, including decisions and phases, is in [docs/DEVELOPMENT_PLAN.md](
 - **Phase 5, Cadence:** two-input 1:1 notes (date and notes) analyzed by Claude in the background: summary, action items, strengths, growth areas, skills and morale; an action-item checklist with follow-up suggestions; 90-day trend reports with talking points; and an overdue-1:1 view.
 - **Phase 6, Escalations:** two-input escalation log (date and details) with names, codes and contact details coded before Claude sees them, plus a preview. Claude proposes the client, people, category, severity, fault and root cause, and you confirm. Includes action items, Open/Resolved status, and trends over confirmed escalations by month, fault, category, severity, client and associates at fault, with Claude's pattern reading.
 - **Phase 7, Dashboard & Insights:** a dashboard with a "Needs attention" strip, the assignment queue, a 60-day first input timeline, capacity, upcoming PTO with conflicts on clients already assigned, due 1:1s, your action items and open escalations. Also an Insights page (capacity over time, first input density, fast starts and runway, implementation durations, escalations by implementation type and start, Claude acceptance and spend) and a Ctrl+K / Cmd+K command palette.
+- **Phase 8, go-live:** security review and hardening (nonce-based Content Security Policy, forged IP headers ignored, Settings > Security with sessions and sign-in activity), nightly encrypted backups with retention, a restore script, backup download and CSV export, a deployment runbook and a user guide.
 
 ## Stack
 
@@ -21,68 +27,40 @@ Next.js 16 (App Router, TypeScript), Tailwind CSS 4, SQLite with Drizzle ORM, An
 
 ## Deploy on your server
 
-Requirements: a Linux server with Docker and the Compose plugin, ports 80 and 443 open, and a domain (or subdomain) whose DNS A record points at the server. Caddy uses the domain to get an HTTPS certificate automatically.
-
-1. Get the code onto the server and create the environment file:
-
-   ```bash
-   git clone https://github.com/ops-oneiric/rex.git && cd rex
-   ```
-
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Edit `.env`:
-   - `REX_ENCRYPTION_KEY`: generate with `openssl rand -base64 32`. Keep a copy somewhere safe; if it is lost, the saved Claude API key must be re-entered.
-   - `REX_DOMAIN`: your domain, for example `rex.example.com`.
-
-3. Start Rex:
-
-   ```bash
-   docker compose up -d --build
-   ```
-
-4. Create the admin account (you'll be asked for a username and password, at least 12 characters):
-
-   ```bash
-   docker compose exec rex node scripts/set-admin.mjs
-   ```
-
-5. Open `https://<your domain>`, sign in, go to **Settings** and paste your Claude API key. Use **Test connection** to confirm it works.
-
-### Day-to-day
-
-Update to the latest version:
+The full runbook is [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). In short, on a Linux server with Docker, a domain pointed at it, and ports 80 and 443 open:
 
 ```bash
-git pull && docker compose up -d --build
+git clone https://github.com/ops-oneiric/rex.git && cd rex && cp .env.example .env
 ```
 
-Reset a forgotten password (this also clears a lockout and signs out every session):
+Set `REX_ENCRYPTION_KEY` (from `openssl rand -base64 32`, and keep a copy in your password manager) and `REX_DOMAIN` in `.env`, then:
+
+```bash
+docker compose up -d --build
+```
 
 ```bash
 docker compose exec rex node scripts/set-admin.mjs
 ```
 
-View logs:
+Open `https://<your domain>`, sign in, and add your Claude API key in **Settings > Claude**.
+
+Update later with:
 
 ```bash
-docker compose logs -f rex
+git pull && docker compose up -d --build
 ```
 
-The database lives in the `rex-data` Docker volume (`/app/data/rex.db`). Automated nightly backups arrive in the go-live phase. Until then, copy it with:
-
-```bash
-docker compose cp rex:/app/data/rex.db ./rex-backup.db
-```
+Backups run every night, are encrypted with `REX_ENCRYPTION_KEY`, and appear in **Settings > Backups and data**. Restore with `scripts/restore-backup.mjs`; see the runbook.
 
 ## Security notes
 
-- There is no two-factor authentication, by choice. The login is protected by a 12-character minimum password, account lockout after 5 failed attempts (15 minutes, doubling up to 24 hours), and a per-IP limit of 10 attempts per 15 minutes. Every attempt is recorded in the audit log.
-- Sessions are random tokens stored only as hashes. They expire after 12 hours idle or 7 days in total.
-- The Claude API key is encrypted with AES-256-GCM using `REX_ENCRYPTION_KEY`, which lives only in the server environment. The key is never sent to the browser.
-- The app container is not exposed directly. Only Caddy (HTTPS) is reachable from the internet.
+See [docs/SECURITY.md](docs/SECURITY.md). In brief:
+
+- There is no two-factor authentication, by choice. The login is protected by a 12-character minimum password, account lockout after 5 failed attempts (15 minutes, doubling up to 24 hours), and a per-IP limit of 10 failed attempts per 15 minutes. Every attempt is recorded and visible in **Settings > Security**.
+- Sessions are random tokens stored only as hashes, ending after 12 hours idle or 7 days in total.
+- Pages carry a nonce-based Content Security Policy. Only Caddy (HTTPS) is reachable from the internet.
+- The Claude API key and every backup are encrypted with `REX_ENCRYPTION_KEY`, which lives only in the server environment.
 
 ## Local development
 
@@ -137,15 +115,20 @@ src/
   app/
     (app)/          signed-in pages: dashboard, clients, assign, associates, cadence, escalations, insights, settings
     login/          sign-in page and login/logout actions
-    api/health/     health check used by Docker
+    api/            health check, backup download, CSV export
   components/       brand (logo), layout (sidebar, headers), ui (buttons, inputs, cards)
   lib/
     auth/           password hashing, sessions, lockout policy, access guard
     ai/             Claude client and model list
     crypto/         secret encryption
+    backups/        encrypted backup format, scheduler, retention
+    insights/       dashboard and Insights calculations
     db/             Drizzle schema, connection, migrations
-  proxy.ts          redirects signed-out visitors to /login
+  proxy.ts          per-request CSP nonce; redirects signed-out visitors to /login
 drizzle/            SQL migrations
-scripts/set-admin.mjs  create or reset the admin account
+scripts/
+  set-admin.mjs       create or reset the admin account
+  restore-backup.mjs  check or restore an encrypted backup
+docs/                 plan, deployment runbook, user guide, security review
 tests/              unit (Vitest) and e2e (Playwright)
 ```

@@ -1,7 +1,7 @@
 # Rex — Development Plan
 
 > Status: **v1.0, approved.** All open questions use their defaults (Section 13), and 2FA is out of scope (D11).
-> **Phases 0 to 7 are complete** (Section 11). Defaults can still be changed whenever you like; most of them are settings, not code.
+> **All phases (0 to 8) are complete** (Section 11). Rex is ready to deploy; see [DEPLOYMENT.md](DEPLOYMENT.md). Defaults can still be changed whenever you like; most of them are settings, not code.
 
 ---
 
@@ -465,6 +465,23 @@ Because Rex is reachable from anywhere (D8), the login carries all the protectio
 - **Backups:** nightly encrypted SQLite snapshot, 30-day retention, optional off-server copy, and "Download backup" in Settings.
 - **Deploy:** `docker compose up -d`. Update with `git pull` and a rebuild. GitHub Actions runs lint, type-check and tests on every push.
 
+*As built in Phase 8* (full review in [SECURITY.md](SECURITY.md)):
+- **Content Security Policy:** now sets a fresh nonce per request with `'strict-dynamic'`, in `src/proxy.ts`. Every page renders per request so it can carry the nonce. Inline scripts are no longer allowed; inline style attributes still are, because React uses them for sizes.
+- **Client IP:** taken from the last `X-Forwarded-For` entry (the one Caddy adds), so a visitor can't forge an address to slip past the per-IP limit.
+- **Settings > Security:** signed-in browsers, "Sign out other browsers", and sign-in activity. The dashboard flags five or more failed sign-ins in a day.
+- **Backups:**
+  - every night after 2 AM your time (configurable), using SQLite's online backup;
+  - encrypted with AES-256-GCM, with a key derived from `REX_ENCRYPTION_KEY` and a random salt per file;
+  - kept 30 days, but the newest 7 are always kept;
+  - **Settings > Backups and data** has "Back up now" and downloads, and the dashboard warns when a backup fails or none has been made for 48 hours;
+  - `scripts/restore-backup.mjs` checks a backup or replaces the live database, keeping the replaced one beside it.
+
+  The off-server copy is documented rather than built in: a cron copy, rsync, a second disk, or a download.
+- **Data export:** CSV files for clients, associates, assignments, PTO, escalations, 1:1 notes and action items, protected against spreadsheet formula injection.
+- **Docker:** the image is built on the full Node image, so native modules can compile (the slim build failed when npm compiled better-sqlite3), and still runs on the slim image. The whole stack (Rex and Caddy with HTTPS) was built, started, used in a browser and put through a restore drill before release.
+- **Dependencies:** `npm audit --omit=dev` reports no known vulnerabilities in what ships.
+- **Docs:** [DEPLOYMENT.md](DEPLOYMENT.md) (runbook), [USER_GUIDE.md](USER_GUIDE.md), [SECURITY.md](SECURITY.md).
+
 ---
 
 ## 11. Phased delivery
@@ -481,11 +498,11 @@ You review each phase before the next starts.
 | **5. Cadence** (done) | Two-input entry, background analysis, action items, follow-up suggestions, associate trend reports, 1:1 rhythm | Log 1:1s and get insights | M |
 | **6. Escalations** (done) | Two-input entry, scrubbing + preview, extraction and roster matching, confirm, fault alignment, trends | Log escalations and see patterns | M |
 | **7. Dashboard & Insights** (done) | Dashboard widgets, Insights charts, command palette | See everything at a glance | M |
-| **8. Go-live** | Security review, backups, deploy to your server, short user guide | Use it in production | S |
+| **8. Go-live** (done) | Security review, backups, deploy to your server, short user guide | Use it in production | S |
 
 Phases 5 and 6 share most of their machinery, so the second is quicker to build.
 
-**Later features the structure supports:** calendar import for PTO, reminders (overdue 1:1s, PTO conflicts created after assignment, approaching first inputs), "what if" planning for the prospect pipeline, using your past override reasons to refine recommendations, weekly digest.
+**Later features the structure supports:** calendar import for PTO, email or push reminders (overdue 1:1s, PTO conflicts, approaching first inputs; the dashboard already shows these), "what if" planning for the prospect pipeline, using your past override reasons to refine recommendations, weekly digest.
 
 ---
 
@@ -537,8 +554,9 @@ You approved the default for every question below (D10). They are kept here as a
 
 ## 14. Next step
 
-Phases 0 to 7 are done. **Phase 8 (Go-live)** is next:
-- a security review of the whole app (auth, sessions, headers, privacy layer, dependency audit);
-- automatic SQLite backups with retention, and a restore drill;
-- deployment to your server with HTTPS (Docker Compose and Caddy are ready), plus a health check;
-- a short user guide.
+All phases are done. To go live:
+1. Follow [DEPLOYMENT.md](DEPLOYMENT.md) on your server: DNS, `.env`, `docker compose up -d --build`, the admin account, then your Claude API key.
+2. Run `npm run eval` once with your key, to check the recommendation scenarios against the real API (so far they have only run against the local stand-in).
+3. Work through the [user guide](USER_GUIDE.md) setup, then the checklist at the end of [SECURITY.md](SECURITY.md).
+
+After a few weeks of real use, the later features in Section 11 are the natural next steps. Your override reasons and confirmed escalations will show which ones matter most.

@@ -44,6 +44,7 @@ import { PasswordForm } from "./password-form";
 import { TimeZoneForm } from "./time-zone-form";
 import { WeightsForm } from "./weights-form";
 import { RulesForm } from "./rules-form";
+import { BackupsTab, SecurityTab } from "./security-tabs";
 
 export const metadata = { title: "Settings" };
 
@@ -52,6 +53,8 @@ const TABS = [
   { id: "claude", label: "Claude" },
   { id: "capabilities", label: "Capabilities" },
   { id: "rules", label: "Clients and rules" },
+  { id: "security", label: "Security" },
+  { id: "backups", label: "Backups and data" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
@@ -62,7 +65,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
 
   return (
     <>
-      <PageHeader title="Settings" description="Your account, the Claude connection, capabilities and the rules behind workload and dates." />
+      <PageHeader title="Settings" description="Your account, the Claude connection, capabilities, the rules behind workload and dates, security and backups." />
       <Tabs
         label="Settings sections"
         active={tab}
@@ -77,6 +80,8 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
       )}
       {tab === "capabilities" && <CapabilitiesTab />}
       {tab === "rules" && <RulesTab />}
+      {tab === "security" && <SecurityTab />}
+      {tab === "backups" && <BackupsTab />}
     </>
   );
 }

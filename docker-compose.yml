@@ -5,8 +5,15 @@ services:
     environment:
       REX_ENCRYPTION_KEY: ${REX_ENCRYPTION_KEY:?Set REX_ENCRYPTION_KEY in .env}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      # Nightly encrypted backups (see docs/DEPLOYMENT.md). Set REX_BACKUPS=off to disable.
+      REX_BACKUPS: ${REX_BACKUPS:-on}
+      REX_BACKUP_HOUR: ${REX_BACKUP_HOUR:-2}
+      REX_BACKUP_RETENTION_DAYS: ${REX_BACKUP_RETENTION_DAYS:-30}
     volumes:
       - rex-data:/app/data
+      # Optional: keep backups in a host folder (for example on a second disk or a synced
+      # folder). Create it first and give it to the container user: sudo chown 1000:1000 <dir>
+      # - /srv/rex-backups:/app/data/backups
     # Not published to the host: only Caddy can reach the app.
     expose:
       - "3000"
