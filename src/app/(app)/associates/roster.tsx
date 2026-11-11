@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { ChevronRight, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { useRowLink } from "@/components/ui/row-link";
 import { Input, Select } from "@/components/ui/input";
 import { LoadBar } from "@/components/assign/load-bar";
 import type { RosterRow } from "@/lib/associates/data";
@@ -22,6 +23,7 @@ const MAX_CHIPS = 3;
 type Row = RosterRow & { load: AssociateLoad | null };
 
 export function Roster({ rows, today }: { rows: Row[]; today: string }) {
+  const rowLink = useRowLink();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<Status>("active");
   const [seat, setSeat] = useState<Seat>("any");
@@ -109,12 +111,13 @@ export function Roster({ rows, today }: { rows: Row[]; today: string }) {
             {filtered.map((r) => (
               <tr
                 key={r.id}
-                className={cn("group relative transition-colors hover:bg-white/60", !r.isActive && "opacity-60")}
+                {...rowLink(`/associates/${r.id}`)}
+                className={cn("group cursor-pointer transition-colors hover:bg-white/60", !r.isActive && "opacity-60")}
               >
                 <td className="px-4 py-3">
                   <Link
                     href={`/associates/${r.id}`}
-                    className="font-medium text-rex-950 after:absolute after:inset-0 hover:underline focus-visible:outline-none"
+                    className="font-medium text-rex-950 hover:underline focus-visible:outline-none"
                   >
                     {r.name}
                   </Link>

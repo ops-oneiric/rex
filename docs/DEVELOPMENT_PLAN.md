@@ -234,7 +234,7 @@ As built in Phase 2:
 - "Business days to first input" counts the business days *after* the start date up to and including the first input date (assigned Monday, first input next Monday = 5).
 - Before assignment, fast start is shown as a projection ("if assigned today"). Once Phase 3 sets `assigned_on`, it is fixed.
 - Clients move one stage at a time, forward or back, each move recorded with an optional note. Prospects need only a company code or a name. Every other field becomes required for Implementation and Service.
-- Company codes are exactly 3 letters or digits, stored uppercase and unique.
+- Company codes are exactly 3 characters (letters, digits or hyphens, with at least one letter or digit), stored uppercase and unique.
 
 For prospects, fields can be filled in gradually. Everything above is required before a client moves to **Implementation**.
 

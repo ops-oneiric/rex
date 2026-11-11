@@ -61,3 +61,26 @@ describe("scrubText", () => {
     expect(unaliasText("ASSOC_99 is unknown", map)).toBe("ASSOC_99 is unknown");
   });
 });
+
+describe("hyphenated company codes", () => {
+  const hy = {
+    clients: [
+      { id: 1, companyCode: "A-1", displayName: null, label: "A-1" },
+      { id: 2, companyCode: "BC-", displayName: null, label: "BC-" },
+    ],
+    associates: [],
+  };
+  const hyMap = buildAliasMap(hy, () => 0.5);
+  const a1 = aliasFor(hyMap, "CLIENT", 1);
+  const bc = aliasFor(hyMap, "CLIENT", 2);
+
+  it("replaces them as whole codes, including at the end of a sentence", () => {
+    expect(scrubText("A-1 went live; BC- is next. Call A-1's HR.", hy, hyMap)).toBe(`${a1} went live; ${bc} is next. Call ${a1}'s HR.`);
+    expect(scrubText("Ask about BC-", hy, hyMap)).toBe(`Ask about ${bc}`);
+  });
+
+  it("leaves longer codes, dates and numbers that merely contain them alone", () => {
+    expect(scrubText("XA-1 and A-12 and 2026-11-A-1x", hy, hyMap)).toBe("XA-1 and A-12 and 2026-11-A-1x");
+    expect(scrubText("BC-7 is different", hy, hyMap)).toBe("BC-7 is different");
+  });
+});

@@ -138,7 +138,7 @@ export const clients = sqliteTable(
   "clients",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
-    /** Exactly 3 uppercase letters or digits. Optional for prospects. Coded before sending to Claude. */
+    /** Exactly 3 characters: uppercase letters, digits or hyphens. Optional for prospects. Coded before sending to Claude. */
     companyCode: text("company_code"),
     /** Optional label. Never sent to Claude. */
     displayName: text("display_name"),

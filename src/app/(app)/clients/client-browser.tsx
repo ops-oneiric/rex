@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronRight, Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { useRowLink } from "@/components/ui/row-link";
 import { Input, Select } from "@/components/ui/input";
 import {
   IMPLEMENTATION_TYPE_LABELS,
@@ -109,6 +110,7 @@ export function ClientBrowser({ rows, view }: { rows: ClientWithFacts[]; view: "
 }
 
 function ClientTable({ rows, total }: { rows: ClientWithFacts[]; total: number }) {
+  const rowLink = useRowLink();
   return (
     <Card className="p-0">
       <div className="overflow-x-auto">
@@ -129,11 +131,11 @@ function ClientTable({ rows, total }: { rows: ClientWithFacts[]; total: number }
           </thead>
           <tbody className="divide-y divide-rex-900/6">
             {rows.map((r) => (
-              <tr key={r.id} className="group relative transition-colors hover:bg-white/60">
+              <tr key={r.id} {...rowLink(`/clients/${r.id}`)} className="group cursor-pointer transition-colors hover:bg-white/60">
                 <td className="px-4 py-3">
                   <Link
                     href={`/clients/${r.id}`}
-                    className="font-medium text-rex-950 after:absolute after:inset-0 hover:underline focus-visible:outline-none"
+                    className="font-medium text-rex-950 hover:underline focus-visible:outline-none"
                   >
                     {r.companyCode ? <span className="font-mono tracking-wider">{r.companyCode}</span> : r.displayName}
                   </Link>

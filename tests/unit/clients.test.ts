@@ -41,7 +41,11 @@ describe("clientSchema", () => {
 
   it("validates company codes", () => {
     expect(fieldErrors(clientSchema.safeParse({ ...full, companyCode: "AB" }).error!).companyCode).toMatch(/exactly 3/);
-    expect(clientSchema.safeParse({ ...full, companyCode: "A-1" }).success).toBe(false);
+    expect(clientSchema.parse({ ...full, companyCode: "a-1" }).companyCode).toBe("A-1");
+    expect(clientSchema.parse({ ...full, companyCode: "AB-" }).companyCode).toBe("AB-");
+    expect(clientSchema.safeParse({ ...full, companyCode: "---" }).success).toBe(false);
+    expect(clientSchema.safeParse({ ...full, companyCode: "A_1" }).success).toBe(false);
+    expect(clientSchema.safeParse({ ...full, companyCode: "A 1" }).success).toBe(false);
     expect(clientSchema.parse({ ...full, companyCode: "x9z" }).companyCode).toBe("X9Z");
   });
 

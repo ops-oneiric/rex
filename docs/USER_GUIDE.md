@@ -23,7 +23,7 @@ Work through these in order. The dashboard shows a "Getting started" checklist u
 
 Each client moves through **Prospect → Implementation → Service**.
 
-- **Prospects** need only a company code (three letters or digits) and a name. You can place a *hold* on an associate for a prospect; it shows as a lighter segment on their load bar.
+- **Prospects** need only a company code (three characters: letters, digits or hyphens, such as `ACM` or `A-1`) and a name. You can place a *hold* on an associate for a prospect; it shows as a lighter segment on their load bar.
 - **Implementations** need every field Rex uses to match a team: employee count, first input date, benefits start, time zone, number of controls, payroll complexity, previous vendor, implementation type and support model.
 - **Moving to Service** ends the team's assignments. The client drops off everyone's load and stays in the history.
 

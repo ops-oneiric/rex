@@ -21,7 +21,8 @@ const wholeNumber = (label: string, min: number, max: number) =>
     .min(min, `The ${label} must be at least ${min}.`)
     .max(max, `The ${label} must be ${max.toLocaleString()} or less.`);
 
-export const COMPANY_CODE_PATTERN = /^[A-Z0-9]{3}$/;
+/** Exactly 3 characters: letters, digits or hyphens, with at least one letter or digit (e.g. "ACM", "A-1"). */
+export const COMPANY_CODE_PATTERN = /^(?=.*[A-Z0-9])[A-Z0-9-]{3}$/;
 
 export const clientSchema = z
   .object({
@@ -30,7 +31,7 @@ export const clientSchema = z
         .string()
         .trim()
         .toUpperCase()
-        .regex(COMPANY_CODE_PATTERN, "Company codes are exactly 3 letters or digits."),
+        .regex(COMPANY_CODE_PATTERN, "Company codes are exactly 3 characters: letters, digits or hyphens."),
     ),
     displayName: optional(z.string().trim().max(100, "Name must be 100 characters or fewer.")),
     lifecycleStage: z.enum(STAGES),
