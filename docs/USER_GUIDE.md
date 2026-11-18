@@ -74,6 +74,13 @@ Mark escalations **Resolved** when they're closed. The **Trends** tab shows coun
 ## 6. The dashboard
 
 - **Needs attention** appears only when something does: PTO conflicts near a first input, fast starts without a team, escalations to review, overdue 1:1s, failed backups, or repeated failed sign-ins.
+- **Calendar** shows first input dates and time off, from the start of this month through the next five months:
+  - Solid purple chips are first inputs; dashed ones are prospects that have a date.
+  - Chips with a person's name are time off.
+  - Red marks a first input collision, or time off that conflicts with a client the person holds. Amber is time off near a benefits start.
+  - Holidays are labelled on their day.
+  - Choose a day, or move with the arrow keys, to see its details below the grid, with links to the client or associate.
+  - The buttons above the grid hide first inputs, prospects or time off. The menu shows one associate's time off and the first inputs for clients they're on.
 - **Upcoming PTO** shows the next 30 days. It flags PTO near a first input (red) or a benefits start (amber) for clients the person already holds, including PTO added after they were assigned.
 - **First input timeline:** go-lives in the next 60 days. Names in red have another go-live too close by.
 - **Capacity:** everyone's weighted load against their target.

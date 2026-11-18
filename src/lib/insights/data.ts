@@ -17,6 +17,7 @@ import {
 import { addDays, todayIn } from "@/lib/dates";
 import { escalationStats, listEscalations, toListItems } from "@/lib/escalations/data";
 import { aiUsageSince } from "@/lib/ai/usage";
+import { calendarData } from "./calendar";
 import { getHomeTimeZone, getRuleSettings } from "@/lib/settings";
 import {
   countBuckets,
@@ -122,6 +123,7 @@ export function dashboardData() {
     timeline: firstInputTimeline(60),
     conflicts,
     pto,
+    calendar: calendarData(conflicts),
     cadenceFrequency: cadence.frequency,
     oneOnOnes,
     managesAnyone: cadence.rows.length > 0,

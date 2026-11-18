@@ -8,6 +8,20 @@ function card(page: Page, title: string) {
   return page.locator(".glass", { has: page.getByRole("heading", { name: title, exact: true }) });
 }
 
+const dayLabel = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+const monthLabel = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+
+/** Moves the dashboard calendar to the day and selects it. */
+async function openCalendarDay(page: Page, iso: string) {
+  const at = new Date(`${iso}T00:00:00Z`);
+  const cal = card(page, "Calendar");
+  for (let i = 0; i < 6 && !(await cal.getByRole("heading", { name: monthLabel.format(at) }).isVisible()); i++) {
+    await cal.getByRole("button", { name: "Next month" }).click();
+  }
+  await cal.getByRole("button", { name: new RegExp(`^${dayLabel.format(at)}`) }).click();
+  return cal.getByRole("region", { name: "Selected day" });
+}
+
 async function openPalette(page: Page) {
   await page.keyboard.press("Control+k");
   await expect(page.getByRole("dialog", { name: "Search Rex" })).toBeVisible();
@@ -51,20 +65,42 @@ test("dashboard widgets, command palette and insights", async ({ page }) => {
   await expect(card(page, "Upcoming PTO")).toContainText("Dana Dashboard");
   await expect(card(page, "Capacity").getByRole("link", { name: "Dana Dashboard" })).toBeVisible();
 
+  // Calendar: the first input and the time off, with filters.
+  let day = await openCalendarDay(page, isoInDays(12));
+  await expect(day.getByRole("link", { name: "DSH · Dashwood Partners" })).toBeVisible();
+  await expect(day).toContainText("Fast start");
+  await expect(day).toContainText("No team yet");
+  await card(page, "Calendar").getByRole("button", { name: "First inputs", exact: true }).click();
+  await expect(day.getByRole("link", { name: "DSH · Dashwood Partners" })).toHaveCount(0);
+  await card(page, "Calendar").getByRole("button", { name: "First inputs", exact: true }).click();
+  await card(page, "Calendar").getByRole("button", { name: "Go to today" }).click();
+  day = await openCalendarDay(page, isoInDays(10));
+  await expect(day.getByRole("link", { name: "Dana Dashboard" })).toBeVisible();
+  await card(page, "Calendar").getByLabel("Show one associate").selectOption({ label: "Dana Dashboard" });
+  await expect(day.getByRole("link", { name: "Dana Dashboard" })).toBeVisible();
+  // Arrow keys move the selection: two days later is the first input.
+  await openCalendarDay(page, isoInDays(10));
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  // DSH has no team, so filtering to Dana hides it.
+  await expect(day).toContainText("Nothing scheduled.");
+  await card(page, "Calendar").getByLabel("Show one associate").selectOption("all");
+  await expect(day.getByRole("link", { name: "DSH · Dashwood Partners" })).toBeVisible();
+
   // Command palette: by company code, by name, to a page; and from the sidebar button.
   await openPalette(page);
-  await page.getByRole("combobox").fill("dsh");
+  await page.getByRole("combobox", { name: "Jump to a client, associate or page" }).fill("dsh");
   await expect(page.getByRole("option", { name: /DSH · Dashwood Partners/ })).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: /DSH/, level: 1 })).toBeVisible();
 
   await openPalette(page);
-  await page.getByRole("combobox").fill("dana dash");
+  await page.getByRole("combobox", { name: "Jump to a client, associate or page" }).fill("dana dash");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "Dana Dashboard", level: 1 })).toBeVisible();
 
   await page.getByRole("button", { name: "Search" }).click();
-  await page.getByRole("combobox").fill("insi");
+  await page.getByRole("combobox", { name: "Jump to a client, associate or page" }).fill("insi");
   await page.getByRole("option", { name: /Insights/ }).click();
   await expect(page).toHaveURL(/\/insights$/);
   await openPalette(page);

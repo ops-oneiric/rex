@@ -19,6 +19,7 @@ import {
   Zap,
 } from "lucide-react";
 import { FirstInputTimeline } from "@/components/assign/first-input-timeline";
+import { DashboardCalendar } from "@/components/dashboard/calendar";
 import { LoadBar } from "@/components/assign/load-bar";
 import { ActionItemList } from "@/components/cadence/action-items";
 import { ReviewBadge, SeverityBadge } from "@/components/escalations/badges";
@@ -191,6 +192,10 @@ export default async function DashboardPage() {
           </ul>
         </section>
       )}
+
+      <div className="mt-6">
+        <DashboardCalendar data={d.calendar} />
+      </div>
 
       <div className="mt-6 grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
         <div className="min-w-0 space-y-6">

@@ -163,3 +163,23 @@ describe("command palette matching", () => {
     expect(rankMatches(items, "  ", 2)).toHaveLength(2);
   });
 });
+
+describe("calendar grid", () => {
+  it("builds Sunday-first weeks padded with neighbouring days", async () => {
+    const { monthWeeks, addMonths, lastDayOf, shortName, eachDay } = await import("@/lib/calendar-grid");
+    const weeks = monthWeeks("2026-11"); // Nov 1, 2026 is a Sunday
+    expect(weeks).toHaveLength(5);
+    expect(weeks[0]![0]).toEqual({ date: "2026-11-01", inMonth: true });
+    expect(weeks.at(-1)!.at(-1)).toEqual({ date: "2026-12-05", inMonth: false });
+    expect(weeks.every((w) => w.length === 7)).toBe(true);
+    const dec = monthWeeks("2026-12"); // starts on a Tuesday
+    expect(dec[0]![0]).toEqual({ date: "2026-11-29", inMonth: false });
+    expect(dec[0]![2]).toEqual({ date: "2026-12-01", inMonth: true });
+    expect(addMonths("2026-11", 2)).toBe("2027-01");
+    expect(addMonths("2026-01", -1)).toBe("2025-12");
+    expect(lastDayOf("2028-02")).toBe("2028-02-29");
+    expect(eachDay("2026-12-30", "2027-01-02")).toEqual(["2026-12-30", "2026-12-31", "2027-01-01", "2027-01-02"]);
+    expect(shortName("Sam Patel")).toBe("Sam P.");
+    expect(shortName("Cher")).toBe("Cher");
+  });
+});

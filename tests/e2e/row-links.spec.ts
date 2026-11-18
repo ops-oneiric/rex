@@ -59,7 +59,7 @@ test("rows open the clicked associate or client; hyphenated codes work", async (
 
   // Palette finds the hyphenated code exactly.
   await page.keyboard.press("Control+k");
-  await page.getByRole("combobox").fill("r-2");
+  await page.getByRole("combobox", { name: "Jump to a client, associate or page" }).fill("r-2");
   await expect(page.getByRole("option", { name: /R-2 · Rowan Second Co/ })).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("Escape");
 
