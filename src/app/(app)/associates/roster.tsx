@@ -95,7 +95,7 @@ export function Roster({ rows, today }: { rows: Row[]; today: string }) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[64rem] text-left text-sm">
+        <table aria-label="Associates" className="w-full min-w-[64rem] text-left text-sm">
           <thead>
             <tr className="text-xs tracking-wide whitespace-nowrap text-ink-muted uppercase">
               <th scope="col" className="px-4 py-3 font-medium">Associate</th>

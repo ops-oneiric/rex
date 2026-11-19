@@ -179,6 +179,8 @@ Each candidate gets a **fact sheet** listing these values. That fact sheet is wh
 
 ---
 
+*Changed after go-live:* first input dates weigh less for PM seats (not hybrid). PTO near first input and first input collisions count at the **PM date weight** (a rule setting, default 0.25) of their payroll weight, and show as amber rather than red. The Associates page also ranks the three most available PMs and payroll associates; see the user guide.
+
 ## 5. Database design
 
 Table and column sketches; final names are in the Drizzle schema (`src/lib/db/schema.ts`). Every table has `id`, `created_at` and `updated_at`.

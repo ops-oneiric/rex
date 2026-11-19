@@ -33,6 +33,11 @@ const GROUPS: { title: string; hint: string; fields: { key: Key; label: string; 
     ],
   },
   {
+    title: "PM seats and dates",
+    hint: "How much PTO near first input and first input collisions count for a PM seat, from 0 (not at all) to 1 (as much as payroll). Hybrid seats always count fully.",
+    fields: [{ key: "pmDateWeight", label: "PM date weight", step: 0.05 }],
+  },
+  {
     title: "Seat shares",
     hint: "Fraction of a client's weight each seat carries. Hybrid is always 1.",
     fields: [

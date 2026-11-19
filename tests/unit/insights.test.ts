@@ -183,3 +183,32 @@ describe("calendar grid", () => {
     expect(shortName("Cher")).toBe("Cher");
   });
 });
+
+describe("availability ranking", () => {
+  it("ranks by room under target, less PTO and upcoming go-lives, which weigh less for PMs", async () => {
+    const { rankAvailability } = await import("@/lib/associates/availability");
+    const base = { isActive: true, canPm: true, canPayroll: true, targetLoad: 8, band: "HEALTHY" as const, pto: [], firstInputs: [] as string[] };
+    const people = [
+      { ...base, id: 1, name: "Ava Light", load: 3 },
+      // Most room, but out for most of a week and a half in the window.
+      { ...base, id: 2, name: "Ben Away", load: 2, pto: [{ startDate: "2026-11-23", endDate: "2026-12-01", isPartialDay: false }] },
+      // Same load as Ava, but three go-lives coming up.
+      { ...base, id: 3, name: "Cal Busy", load: 3, firstInputs: ["2026-11-25", "2026-12-01", "2026-12-04"] },
+      { ...base, id: 4, name: "Dee PM", load: 6, canPayroll: false },
+      { ...base, id: 5, name: "Eve Gone", load: 0, isActive: false },
+    ];
+    const ctx = { today: "2026-11-19", holidays: new Set(["2026-11-26"]), rules: DEFAULT_RULES };
+    const payroll = rankAvailability(people, "PAYROLL", ctx);
+    expect(payroll.map((r) => r.name)).toEqual(["Ava Light", "Ben Away", "Cal Busy"]);
+    // Nov 26 is Thanksgiving and Nov 28-29 a weekend: six business days of PTO.
+    expect(payroll.find((r) => r.id === 2)).toMatchObject({ room: 6, ptoDays: 6, score: 3, nextPto: { startDate: "2026-11-23", endDate: "2026-12-01" } });
+    expect(payroll.find((r) => r.id === 3)).toMatchObject({ firstInputsSoon: 3, score: 2 });
+
+    // For PMs, Cal's go-lives count at a quarter, so Cal ranks above Ben.
+    const pm = rankAvailability(people, "PM", ctx);
+    expect(pm.map((r) => r.name)).toEqual(["Ava Light", "Cal Busy", "Ben Away"]);
+    expect(rankAvailability(people, "PM", ctx, 5).map((r) => r.name)).toContain("Dee PM");
+    expect(rankAvailability(people, "PAYROLL", ctx, 5).map((r) => r.name)).not.toContain("Dee PM");
+    expect(rankAvailability(people, "PAYROLL", ctx, 5).map((r) => r.name)).not.toContain("Eve Gone");
+  });
+});

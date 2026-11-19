@@ -20,6 +20,7 @@ import {
   type RuleClient,
 } from "./rules";
 import { canFill, type Seat, seatRole, SEATS_BY_MODEL } from "./seats";
+import { type AvailabilityInput, rankAvailability } from "@/lib/associates/availability";
 
 const { assignments, associates, clients, associateCapabilities, capabilities, associatePto } = schema;
 
@@ -372,4 +373,41 @@ export function teamsByClient(): Map<number, { associateId: number; name: string
   const out = new Map<number, { associateId: number; name: string }[]>();
   for (const r of rows) out.set(r.clientId, [...(out.get(r.clientId) ?? []), { associateId: r.associateId, name: r.name }]);
   return out;
+}
+
+/* ---------------------------------------- Availability ---------------------------------------- */
+
+/** The three most available associates for a PM seat and for a payroll seat. */
+export function availabilityRankings() {
+  const ctx = clientContext();
+  const rules = getRuleSettings();
+  const loads = allLoads();
+  const facts = new Map(withFacts(listClients(), ctx).map((c) => [c.id, c]));
+  const active = db.select({ associateId: assignments.associateId, clientId: assignments.clientId }).from(assignments).where(eq(assignments.status, "ACTIVE")).all();
+  const pto = db.select().from(associatePto).all();
+  const people: AvailabilityInput[] = db
+    .select()
+    .from(associates)
+    .all()
+    .map((a) => {
+      const load = loads.get(a.id);
+      return {
+        id: a.id,
+        name: a.name,
+        isActive: a.isActive,
+        canPm: a.canPm,
+        canPayroll: a.canPayroll,
+        targetLoad: a.targetLoad,
+        load: load?.projected ?? 0,
+        band: load?.band ?? "AVAILABLE",
+        pto: pto.filter((p) => p.associateId === a.id),
+        firstInputs: active
+          .filter((r) => r.associateId === a.id)
+          .map((r) => facts.get(r.clientId))
+          .filter((c) => c?.lifecycleStage === "IMPLEMENTATION" && c.firstInputDate)
+          .map((c) => c!.firstInputDate!),
+      };
+    });
+  const opts = { today: ctx.today, holidays: ctx.holidays, rules };
+  return { pm: rankAvailability(people, "PM", opts), payroll: rankAvailability(people, "PAYROLL", opts) };
 }

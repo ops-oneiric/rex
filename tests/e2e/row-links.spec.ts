@@ -30,7 +30,7 @@ test("rows open the clicked associate or client; hyphenated codes work", async (
   // Click a plain cell (time zone) of the first of the two, away from the name link.
   await page.goto("/associates");
   await page.getByLabel("Search associates").fill("Row");
-  const rows = page.getByRole("row").filter({ hasText: /Rowfirst|Rowlast/ });
+  const rows = page.getByRole("table", { name: "Associates" }).getByRole("row").filter({ hasText: /Rowfirst|Rowlast/ });
   await expect(rows).toHaveCount(2);
   await rows.filter({ hasText: "Aaron Rowfirst" }).getByRole("cell").nth(2).click();
   await expect(page.getByRole("heading", { name: "Aaron Rowfirst", level: 1 })).toBeVisible();
@@ -74,7 +74,7 @@ test("rows open the clicked associate or client; hyphenated codes work", async (
   }
   for (const name of ["Aaron Rowfirst", "Zelda Rowlast"]) {
     await page.goto("/associates");
-    await page.getByRole("link", { name }).click();
+    await page.getByRole("table", { name: "Associates" }).getByRole("link", { name }).click();
     await page.getByRole("button", { name: "Delete", exact: true }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Delete associate" }).click();
     await expect(page).toHaveURL(/\/associates$/);

@@ -73,10 +73,10 @@ test("assign a team with rules, override a PTO knock-out, and end it at Service"
   await page.goto("/clients");
   await expect(page.getByRole("row", { name: /TMS/ })).toContainText("Riley PM");
   await page.goto("/associates");
-  await expect(page.getByRole("row", { name: /Pat Payroll/ })).toContainText("1 account");
+  await expect(page.getByRole("table", { name: "Associates" }).getByRole("row", { name: /Pat Payroll/ })).toContainText("1 account");
 
   // An associate with assignments cannot be deleted.
-  await page.getByRole("link", { name: "Pat Payroll" }).click();
+  await page.getByRole("table", { name: "Associates" }).getByRole("link", { name: "Pat Payroll" }).click();
   await expect(page.getByRole("heading", { name: "Pat Payroll", level: 1 })).toBeVisible();
   await page.getByRole("navigation", { name: "Associate sections" }).getByRole("link", { name: /Clients/ }).click();
   await expect(page.getByRole("link", { name: "TMS" })).toBeVisible();
@@ -107,6 +107,7 @@ test("assign a team with rules, override a PTO knock-out, and end it at Service"
 
 test("assignment rules can be changed in Settings", async ({ page }) => {
   await signIn(page, "/settings?tab=rules");
+  await expect(page.getByRole("spinbutton", { name: "PM date weight" })).toHaveValue("0.25");
   await page.getByRole("spinbutton", { name: "Days before" }).fill("10");
   await page.getByRole("button", { name: "Save rules" }).click();
   await expect(page.getByText("Assignment rules saved.")).toBeVisible();

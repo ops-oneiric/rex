@@ -4,7 +4,8 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { listRoster } from "@/lib/associates/data";
-import { allLoads } from "@/lib/assignments/data";
+import { allLoads, availabilityRankings } from "@/lib/assignments/data";
+import { AvailabilityCard } from "./availability-card";
 import { requireAdmin } from "@/lib/auth/dal";
 import { today } from "@/lib/settings";
 import { Roster } from "./roster";
@@ -44,7 +45,10 @@ export default async function AssociatesPage() {
           />
         </Card>
       ) : (
-        <Roster rows={rows} today={todayIso} />
+        <>
+          <AvailabilityCard {...availabilityRankings()} />
+          <Roster rows={rows} today={todayIso} />
+        </>
       )}
     </>
   );

@@ -55,7 +55,7 @@ test("add an associate, set capabilities and PTO, then edit, deactivate and dele
 
   // Roster shows the associate with chips and next PTO.
   await page.getByRole("link", { name: "All associates" }).click();
-  const row = page.getByRole("row", { name: /Jordan Lee/ });
+  const row = page.getByRole("table", { name: "Associates" }).getByRole("row", { name: /Jordan Lee/ });
   await expect(row).toContainText("Multi-Control");
   await expect(row).toContainText("Eastern");
   await expect(row).toContainText("Managed");
@@ -74,7 +74,7 @@ test("add an associate, set capabilities and PTO, then edit, deactivate and dele
 
   // Edit.
   await page.goto("/associates");
-  await page.getByRole("link", { name: "Jordan Lee" }).click();
+  await page.getByRole("table", { name: "Associates" }).getByRole("link", { name: "Jordan Lee" }).click();
   await page.getByRole("link", { name: "Edit", exact: true }).click();
   await page.getByLabel("Name").fill("Jordan A. Lee");
   await page.getByRole("button", { name: "Save changes" }).click();
@@ -91,9 +91,9 @@ test("add an associate, set capabilities and PTO, then edit, deactivate and dele
   await page.getByRole("button", { name: "Deactivate" }).click();
   await expect(page.getByText("Inactive: excluded from recommendations")).toBeVisible();
   await page.goto("/associates");
-  await expect(page.getByRole("row", { name: /Jordan A. Lee/ })).toHaveCount(0);
+  await expect(page.getByRole("table", { name: "Associates" }).getByRole("row", { name: /Jordan A. Lee/ })).toHaveCount(0);
   await page.getByLabel("Filter by status").selectOption("inactive");
-  await expect(page.getByRole("row", { name: /Jordan A. Lee/ })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Associates" }).getByRole("row", { name: /Jordan A. Lee/ })).toBeVisible();
 
   // Delete.
   await page.getByRole("link", { name: "Jordan A. Lee" }).click();

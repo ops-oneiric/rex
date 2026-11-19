@@ -3,6 +3,7 @@ import {
   associateLoad,
   clientNeeds,
   DEFAULT_RULES,
+  ruleSettingsSchema,
   evaluateCandidate,
   loadBand,
   offsetMinutes,
@@ -92,12 +93,18 @@ describe("PTO rules", () => {
     expect(evaluateCandidate({ ...client, supportModel: "HYBRID" }, "HYBRID", a, ctx).status).toBe("knocked_out");
   });
 
-  it("only penalizes the PM seat", () => {
+  it("only flags the PM seat, and weighs it lightly", () => {
     const a = associate({ pto: [{ startDate: "2026-12-09", endDate: "2026-12-10", isPartialDay: false }] });
     const e = evaluateCandidate(client, "PM", a, ctx);
     expect(e.status).toBe("eligible");
-    expect(e.flags.some((f) => f.level === "red" && f.text.startsWith("PTO near first input"))).toBe(true);
-    expect(e.score).toBeLessThan(evaluateCandidate(client, "PM", associate(), ctx).score - 30);
+    expect(e.flags.some((f) => f.level === "amber" && f.text.startsWith("PTO near first input"))).toBe(true);
+    const clear = evaluateCandidate(client, "PM", associate(), ctx).score;
+    expect(clear - e.score).toBeGreaterThan(5);
+    expect(clear - e.score).toBeLessThan(15);
+    // At full weight it counts as heavily as before.
+    const full = evaluateCandidate(client, "PM", a, { ...ctx, rules: { ...DEFAULT_RULES, pmDateWeight: 1 } });
+    expect(full.flags.some((f) => f.level === "red" && f.text.startsWith("PTO near first input"))).toBe(true);
+    expect(full.score).toBeLessThan(clear - 30);
   });
 
   it("ignores PTO just outside the window", () => {
@@ -145,6 +152,27 @@ describe("first input collisions", () => {
       ["C9", "close", 9],
     ]);
     expect(e.flags.filter((f) => f.level === "red")).toHaveLength(1);
+  });
+
+  it("matter much more for payroll and hybrid seats than for a PM", () => {
+    const a = associate({ canPm: true, canPayroll: true, held: [held("2026-12-14", 8), held("2026-12-21", 9)] });
+    const clear = associate({ canPm: true, canPayroll: true });
+    const drop = (seat: "PM" | "PAYROLL_1" | "HYBRID") =>
+      evaluateCandidate({ ...client, supportModel: seat === "HYBRID" ? "HYBRID" : "TRADITIONAL" }, seat, clear, ctx).score -
+      evaluateCandidate({ ...client, supportModel: seat === "HYBRID" ? "HYBRID" : "TRADITIONAL" }, seat, a, ctx).score;
+    expect(drop("PAYROLL_1")).toBe(35);
+    expect(drop("HYBRID")).toBe(35);
+    expect(drop("PM")).toBe(9);
+    const pm = evaluateCandidate(client, "PM", a, ctx);
+    expect(pm.collisions).toHaveLength(2);
+    expect(pm.flags.some((f) => f.level === "red")).toBe(false);
+    expect(pm.flags.some((f) => f.text.endsWith("(weighs less for a PM seat)"))).toBe(true);
+  });
+
+  it("loads rules saved before the PM date weight existed", () => {
+    const old: Partial<typeof DEFAULT_RULES> = { ...DEFAULT_RULES, ptoBefore: 7 };
+    delete old.pmDateWeight;
+    expect(ruleSettingsSchema.parse(old)).toMatchObject({ ptoBefore: 7, pmDateWeight: 0.25 });
   });
 });
 

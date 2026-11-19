@@ -41,6 +41,16 @@ test("dashboard widgets, command palette and insights", async ({ page }) => {
   await page.getByRole("button", { name: "Add PTO" }).click();
   await expect(page.getByText(/PTO added/)).toBeVisible();
 
+  // Associates page: the most-available rankings, at most three per seat type.
+  await page.goto("/associates");
+  const available = card(page, "Most available");
+  for (const list of ["Most available for a PM seat", "Most available for a payroll seat"]) {
+    const table = available.getByRole("table", { name: list });
+    await expect(table).toBeVisible();
+    expect(await table.getByRole("row").count()).toBeLessThanOrEqual(4); // header + 3
+  }
+  await expect(available.getByRole("table", { name: "Most available for a payroll seat" }).getByRole("row").filter({ hasText: "Dana Dashboard" })).toContainText(/PTO /);
+
   // A fast start: first input in 12 days with no team.
   await page.goto("/clients/new?stage=IMPLEMENTATION");
   await page.getByRole("radio", { name: /^Implementation/ }).check();
@@ -125,7 +135,7 @@ test("dashboard widgets, command palette and insights", async ({ page }) => {
   await page.getByRole("dialog").getByRole("button", { name: "Delete client" }).click();
   await expect(page).toHaveURL(/\/clients$/);
   await page.goto("/associates");
-  await page.getByRole("link", { name: "Dana Dashboard" }).click();
+  await page.getByRole("table", { name: "Associates" }).getByRole("link", { name: "Dana Dashboard" }).click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Delete associate" }).click();
   await expect(page).toHaveURL(/\/associates$/);

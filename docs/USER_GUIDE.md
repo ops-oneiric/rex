@@ -41,14 +41,20 @@ The client page shows the workload breakdown, the team, stage history, and relat
 
 For each seat Rex ranks every associate. The rules engine works out the facts:
 
-- **PTO knock-outs:** PTO near the first input rules out payroll and hybrid seats, and counts heavily against a PM.
-- **First input collisions:** two go-lives within a few business days of each other for the same person.
+- **PTO knock-outs:** PTO near the first input rules out payroll and hybrid seats. For a PM it only counts lightly, because PM work is spread across the implementation.
+- **First input collisions:** two go-lives within a few business days of each other for the same person. These matter most for payroll and hybrid seats, and count lightly for a PM. **Settings > Clients and rules > PM date weight** sets how lightly (default 0.25, a quarter of the payroll weight; 1 treats PMs like payroll).
 - **Capacity:** a target of about 5 to 10 active accounts, weighted by workload.
 - **Capability fit and time zone.**
 
 You can assign by hand from the ranked list. To pick someone who was knocked out, you have to write a reason.
 
 **Recommend team** asks Claude to propose complete teams using those facts. Before anything is sent, names and company codes are replaced with codes like `CLIENT_03` and `ASSOC_05`, and you can preview exactly what goes out. Accept a team, swap people before accepting, or decline it. Rex keeps your decisions and reasons.
+
+**Most available** at the top of **Associates** shows the three people with the most room for a PM seat and for a payroll seat. Hybrid-eligible people can appear in both lists. The ranking starts from how far each person's load is below their target, then subtracts:
+- half a point for each business day of PTO in the next 20 business days;
+- a point for each first input they have coming up in that window (a quarter of a point in the PM list).
+
+It's a quick read of the team; for a specific client, use **Assign**.
 
 ## 4. Cadence (1:1s)
 

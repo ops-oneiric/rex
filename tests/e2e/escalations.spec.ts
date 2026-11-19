@@ -82,7 +82,7 @@ test("log, preview, review, confirm and resolve escalations; see trends", async 
 
   // The associate and client pages show them.
   await page.goto("/associates");
-  await page.getByRole("link", { name: "Esme Payroll" }).click();
+  await page.getByRole("table", { name: "Associates" }).getByRole("link", { name: "Esme Payroll" }).click();
   await page.getByRole("navigation", { name: "Associate sections" }).getByRole("link", { name: /Escalations/ }).click();
   await expect(page.getByText("2 confirmed escalations involving them, 2 with fault confirmed as theirs.")).toBeVisible();
   await page.goto("/clients");

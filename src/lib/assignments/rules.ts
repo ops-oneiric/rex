@@ -33,6 +33,13 @@ export const ruleSettingsSchema = z.object({
   bandOver: n(30),
   /** Flag time zones this many hours apart or more. */
   timeZoneFlagHours: n(12).int(),
+  /**
+   * How much first input dates count for a PM seat (not hybrid), as a fraction of their
+   * weight for payroll seats: PTO near first input and first input collisions. A PM's work
+   * spreads across the implementation; payroll work peaks at go-live. Defaulted so rules
+   * saved before this setting existed still load.
+   */
+  pmDateWeight: n(1).default(0.25),
 });
 
 export type RuleSettings = z.infer<typeof ruleSettingsSchema>;
@@ -51,6 +58,7 @@ export const DEFAULT_RULES: RuleSettings = {
   bandFull: 8,
   bandOver: 10,
   timeZoneFlagHours: 3,
+  pmDateWeight: 0.25,
 };
 
 /** Fraction of a client's weight that a seat carries. */
@@ -257,8 +265,9 @@ export function evaluateCandidate(
         knockedOut = true;
         reasons.push(text);
       } else {
-        flags.push({ level: "red", text });
-        penalty += 35;
+        // PM seat: a concern, weighted down because PM work isn't concentrated at go-live.
+        flags.push({ level: rules.pmDateWeight >= 0.5 ? "red" : "amber", text });
+        penalty += 35 * rules.pmDateWeight;
       }
     }
 
@@ -298,13 +307,18 @@ export function evaluateCandidate(
   }
   const conflicts = collisions.filter((c) => c.level === "conflict");
   const close = collisions.filter((c) => c.level === "close");
+  // Collisions matter most for payroll and hybrid seats, where the go-live work lands.
+  const dateWeight = role === "PM" ? rules.pmDateWeight : 1;
   if (conflicts.length) {
-    flags.push({ level: "red", text: `First input within ${rules.collisionConflict} business days of ${conflicts.map((c) => c.label).join(", ")}` });
-    penalty += Math.min(conflicts.length * 25, 50);
+    flags.push({
+      level: role === "PM" && rules.pmDateWeight < 0.5 ? "amber" : "red",
+      text: `First input within ${rules.collisionConflict} business days of ${conflicts.map((c) => c.label).join(", ")}${role === "PM" ? " (weighs less for a PM seat)" : ""}`,
+    });
+    penalty += Math.min(conflicts.length * 25, 50) * dateWeight;
   }
-  if (close.length) {
+  if (close.length && (role !== "PM" || rules.pmDateWeight > 0)) {
     flags.push({ level: "amber", text: `First input within ${rules.collisionClose} business days of ${close.map((c) => c.label).join(", ")}` });
-    penalty += Math.min(close.length * 10, 20);
+    penalty += Math.min(close.length * 10, 20) * dateWeight;
   }
 
   // 3. Capacity.
